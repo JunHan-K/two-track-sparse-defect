@@ -122,7 +122,7 @@ def main():
         cfg, m = load_model(exp, dev)
         check_prep(cfg)
         size = cfg["data"]["input_size"]
-        mu, sd = timed(lambda i: predict_batch(m, prep(i, size), ["main"], amp=False), range(a.n))
+        mu, sd = timed(lambda i: predict_batch(m, prep(i, size), ["main"], amp=False, dtype=torch.float32), range(a.n))
         res["models"][exp] = {"latency_ms": mu, "std_ms": sd, "passes": 1}
         print(exp, f"{mu:.1f} ms", flush=True)
         del m
@@ -136,7 +136,7 @@ def main():
             crops = []
 
             def run(i, z=z, crops=crops):
-                base = predict_batch(m, prep(i, size), ["main"], amp=False)[0]["main"]
+                base = predict_batch(m, prep(i, size), ["main"], amp=False, dtype=torch.float32)[0]["main"]
                 _, k = EZ.zoom_image(m, rows_all[i], base, base.cpu().numpy(), z, dev)
                 crops.append(k)
             mu, sd = timed(run, range(a.n))

@@ -209,7 +209,8 @@ def predict(model, ref, row, device, n_patches=-1, n_points=0.75, smooth=11):
         out = []
         for i in range(patches.shape[0]):
             a = patches[i:i + 1]
-            out.append(torch.softmax(net(a) if other is None else net(a, other[i:i + 1]), 1))
+            o = net(a.float()) if other is None else net(a.float(), other[i:i + 1].float())
+            out.append(torch.softmax(o.double(), 1))  # float64: float32 softmax saturates (ties in the AP ranking)
         return torch.cat(out)
 
     final = batch_pred(model, resize_img(x, BASE)[None].to(device))
@@ -217,7 +218,7 @@ def predict(model, ref, row, device, n_patches=-1, n_points=0.75, smooth=11):
     for idx, s in enumerate(sc[1:], 1):
         if n_patches == 0:
             break
-        ratios = torch.tensor(get_patch_coords((s, s), (BASE, BASE)), device=device, dtype=torch.float32)
+        ratios = torch.tensor(get_patch_coords((s, s), (BASE, BASE)), device=device, dtype=final.dtype)
         final = F.interpolate(final, (s, s), mode="bilinear", align_corners=False)
         coords = ratios.clone() * s
         unc = 1.0 - calculate_certainty(final)
@@ -237,10 +238,11 @@ def predict(model, ref, row, device, n_patches=-1, n_points=0.75, smooth=11):
         if n_patches > 0:  # verbatim from their test.py (only used by MagNet-Fast)
             cert[:, :, mask] = 0.0
         err = cert * F.interpolate(unc, (s, s), mode="bilinear", align_corners=False)
-        err = F.interpolate(blur(F.interpolate(err, size=(BASE, BASE))), size=(s, s))
+        err = F.interpolate(blur(F.interpolate(err.float(), size=(BASE, BASE))), size=(s, s))  # their float32 blur
         npts = int(s * s * n_points * len(sel) / len(ratios))
         ei, ec = get_uncertain_point_coords_on_grid(err, npts)
         ei = ei.unsqueeze(1).expand(-1, nc, -1)
+        ec = ec.to(fine.dtype)
         fp = point_sample(fine, ec, align_corners=False)
         if n_patches > 0:
             sm = point_sample(mask.float()[None, None], ec, align_corners=False).bool().squeeze()

@@ -9,12 +9,14 @@ def to_device(batch, device):
 
 
 @torch.no_grad()
-def predict_batch(model, batch, heads=("main",), amp=True, resolution="original"):
+def predict_batch(model, batch, heads=("main",), amp=True, resolution="original", dtype=torch.float64):
     """Run the model and return per-image probability maps.
 
     heads: iterable containing "main" and/or training-only stage heads (s1..s4).
     resolution: "original" -> padding removed + upsampled to the original image size
                 "resized"  -> padding removed, network input resolution
+    dtype: of the probabilities. Evaluation keeps float64: a float32 sigmoid is exactly 1.0 above logit ~16.6, so
+           confident pixels would tie in the AP ranking (tools/measure_modes.py times the float32 deployment path).
     Returns: list (per image) of {head: prob tensor (h, w)}.
     """
     need_aux = any(h != "main" for h in heads)
@@ -33,7 +35,7 @@ def predict_batch(model, batch, heads=("main",), amp=True, resolution="original"
         oh, ow = batch["orig_hw"][i].tolist()
         per = {}
         for h, logit in maps.items():
-            p = torch.sigmoid(logit[i : i + 1, :, :nh, :nw].float())
+            p = torch.sigmoid(logit[i : i + 1, :, :nh, :nw].to(dtype))
             if resolution == "original" and (nh, nw) != (oh, ow):
                 p = F.interpolate(p, size=(oh, ow), mode="bilinear", align_corners=False)
             per[h] = p[0, 0]

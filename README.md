@@ -12,9 +12,10 @@ finds them, together with many false alarms that the wider context would have ru
 **Training** (`configs/<dataset>/ours_stage1.yaml`, then `ours.yaml`)
 1. *Two views.* Every second batch of downscaled whole images is followed by a batch of 384x384 crops taken at
    the original resolution (centred on a defect with probability 0.5).
-2. *Size-aware supervision.* Defect pixels of small components get up to 5x more weight in the BCE term of the
-   main head. Stage heads on the four encoder stages are trained at the same time (the shallow two on small
-   defects only) and are **discarded at inference**: the deployed network is the plain MiT-B0 segmenter.
+2. *Size-aware supervision* (whole-image batches). Defect pixels of small components get up to 5x more weight in
+   the BCE term of the main head. Stage heads on the four encoder stages are trained at the same time (the shallow
+   two on small defects only) and are **discarded at inference**: the deployed network is the plain MiT-B0
+   segmenter.
 3. *Confusion replay.* The trained model segments its own training images at native resolution; its false
    positives (print, vents, edges) and small defects are replayed in a 20-epoch refinement.
 
@@ -103,7 +104,9 @@ the small-target models and MagNet are reported with the BCE+Dice recipe because
 ## Evaluation protocol (`sds/metrics.py`)
 
 - Pixel AP from score histograms in **logit space** (262,144 bins), equal to the AP on the raw scores up to
-  ties; uniform probability bins merge the saturated scores of confident models.
+  ties; uniform probability bins merge the saturated scores of confident models. Probabilities are kept in
+  float64 during evaluation (a float32 sigmoid is exactly 1.0 above logit 16.6); thresholds and AUPRO use an
+  8,192-bin logit grid.
 - Boundary-tolerant AP: a defect pixel is scored by the maximum prediction within 3 px, and background within
   3 px of a defect is not a negative.
 - AUPRO up to FPR 0.3, mIoU (background, defect), target-level P<sub>d</sub>/F<sub>a</sub> at threshold 0.5

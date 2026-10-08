@@ -40,18 +40,19 @@ from sds.utils import resolve  # noqa: E402
 plt.rcParams.update({"font.family": "STIXGeneral", "mathtext.fontset": "stix", "font.size": 7.5,
                      "pdf.fonttype": 42, "ps.fonttype": 42})
 
-# column = (title, experiment, prediction sub-dir suffix, npz key, metrics file holding its val threshold)
+# column = (title, experiment, prediction sub-dir suffix, npz key, metrics file holding its validation-selected
+# threshold: the --test run stores the thresholds it selected on validation on the current threshold grid)
 PRESETS = {
     "vision": {
         "splits": {"val": "data/splits/vision/val.csv", "test": "data/splits/vision/test.csv"},
         "baseline": 0, "ours": 4,
         "columns": [
-            ("SegFormer-B0", "vision_segformer_b0", "", "pmain", "metrics_val.json"),
-            ("B0, $1536^2$", "vision_segformer_b0_1536", "", "pmain", "metrics_val.json"),
-            ("U-Net (R34)", "vision_unet", "", "pmain", "metrics_val.json"),
-            ("MagNet", "vision_magnet", "", "pmain", "metrics_val.json"),
+            ("SegFormer-B0", "vision_segformer_b0", "", "pmain", "metrics_test.json"),
+            ("B0, $1536^2$", "vision_segformer_b0_1536", "", "pmain", "metrics_test.json"),
+            ("U-Net (R34)", "vision_unet", "", "pmain", "metrics_test.json"),
+            ("MagNet", "vision_magnet", "", "pmain", "metrics_test.json"),
             ("ours (final)", "vision_ours", "_zoom_main_masked_d16_o0.5_t0.02_n32", "pmain",
-             "metrics_zoom_main_masked_d16_o0.5_t0.02_n32_val.json"),
+             "metrics_zoom_main_masked_d16_o0.5_t0.02_n32_test.json"),
         ],
     },
 }

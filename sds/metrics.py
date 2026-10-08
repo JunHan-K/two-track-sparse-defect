@@ -159,7 +159,7 @@ class PixelEvaluator:
         """prob: float tensor (h, w) in [0, 1]; gt: {0,1} tensor (h, w)."""
         assert prob.dim() == 2 and prob.shape == gt.shape
         shape = tuple(prob.shape)
-        prob = prob.float().clamp(0, 1)
+        prob = prob.double().clamp(0, 1)  # float64 end to end (see sds.engine.predict_batch)
         gt2 = gt > 0
         keep_m = None
         if self.tol and bool(gt2.any()):

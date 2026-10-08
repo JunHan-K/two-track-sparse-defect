@@ -80,7 +80,7 @@ def zoom_image(model, row, base, cand, args, device):
     img = np.asarray(Image.open(resolve(row["image"])).convert("RGB"))
     h, w = img.shape[:2]
     c = args.crop
-    zoom = torch.zeros((h, w), device=device)
+    zoom = torch.zeros((h, w), device=device, dtype=base.dtype)  # float64 in evaluation, float32 when timed
     covered = torch.zeros((h, w), dtype=torch.bool, device=device)
     for cy, cx in centres:
         y0, x0 = int(np.clip(cy - c // 2, 0, max(0, h - c))), int(np.clip(cx - c // 2, 0, max(0, w - c)))
@@ -88,7 +88,7 @@ def zoom_image(model, row, base, cand, args, device):
         patch = np.zeros((c, c, 3), np.float32)
         patch[:ch, :cw] = (img[y0:y0 + ch, x0:x0 + cw].astype(np.float32) / 255.0 - IMAGENET_MEAN) / IMAGENET_STD
         x = torch.from_numpy(patch.transpose(2, 0, 1))[None].to(device)
-        p = torch.sigmoid(model(x, return_aux=False)["logits"].float())[0, 0, :ch, :cw]
+        p = torch.sigmoid(model(x, return_aux=False)["logits"].to(base.dtype))[0, 0, :ch, :cw]
         zoom[y0:y0 + ch, x0:x0 + cw] = torch.maximum(zoom[y0:y0 + ch, x0:x0 + cw], p)
         covered[y0:y0 + ch, x0:x0 + cw] = True
     if args.merge == "masked":

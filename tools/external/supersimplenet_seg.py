@@ -145,7 +145,7 @@ def predict(model, transform, csv, device):
         img = read_image(str(resolve(r["image"])))
         x = transform(image=img)["image"][None].to(device)
         amap, score = model(x)
-        p = torch.sigmoid(amap.float()).reshape(1, 1, *amap.shape[-2:])
+        p = torch.sigmoid(amap.double()).reshape(1, 1, *amap.shape[-2:])  # float64: no saturation ties
         p = F.interpolate(p, size=(r["height"], r["width"]), mode="bilinear", align_corners=False)[0, 0]
         yield r, p.clamp(0, 1), float(torch.sigmoid(score.float()).flatten()[0])
 
