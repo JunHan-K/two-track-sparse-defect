@@ -36,7 +36,7 @@ from sds.utils import (append_result, enable_tf32, environment_info, file_sha256
 from tools.evaluate import size_edges  # noqa: E402
 
 
-def pick_rois(cand, tau, n_roi):
+def pick_rois(cand: np.ndarray, tau: float, n_roi: int) -> list[tuple[int, int]]:
     """Peaks of the n_roi strongest connected regions of cand > tau (8-connectivity), strongest first.
 
     The per-label maximum and its first position in C order (deterministic tie-break) come from one lexsort.
@@ -57,7 +57,7 @@ PRESETS = {"precision": dict(roi_source="main", tau=0.02, n_roi=32, merge="maske
            "recall": dict(roi_source="tile", merge="max")}
 
 
-def tile_centres(h, w, c):
+def tile_centres(h: int, w: int, c: int) -> list[tuple[int, int]]:
     """Cover the whole image with crops (stride = crop): recall mode."""
     ys = list(range(c // 2, max(h - c // 2, c // 2) + 1, c)) or [c // 2]
     xs = list(range(c // 2, max(w - c // 2, c // 2) + 1, c)) or [c // 2]
@@ -69,7 +69,8 @@ def tile_centres(h, w, c):
 
 
 @torch.no_grad()
-def zoom_image(model, row, base, cand, args, device):
+def zoom_image(model: torch.nn.Module, row: dict, base: torch.Tensor, cand: np.ndarray, args, device):
+    """Two-track inference for one image -> (final probability map at original resolution, number of crops)."""
     if args.roi_source == "tile":
         centres = tile_centres(row["height"], row["width"], args.crop)
     else:

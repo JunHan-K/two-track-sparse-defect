@@ -4,12 +4,13 @@ import torch.nn.functional as F
 from .metrics import PixelEvaluator
 
 
-def to_device(batch, device):
+def to_device(batch: dict, device) -> dict:
     return {k: (v.to(device, non_blocking=True) if torch.is_tensor(v) else v) for k, v in batch.items()}
 
 
 @torch.no_grad()
-def predict_batch(model, batch, heads=("main",), amp=True, resolution="original", dtype=torch.float64):
+def predict_batch(model: torch.nn.Module, batch: dict, heads=("main",), amp: bool = True, resolution: str = "original",
+                  dtype: torch.dtype = torch.float64) -> list[dict]:
     """Run the model and return per-image probability maps.
 
     heads: iterable containing "main" and/or training-only stage heads (s1..s4).
@@ -44,7 +45,8 @@ def predict_batch(model, batch, heads=("main",), amp=True, resolution="original"
 
 
 @torch.no_grad()
-def evaluate_loader(model, loader, dataset, device, heads=("main",), amp=True, keep_per_image=True, on_image=None,
+def evaluate_loader(model: torch.nn.Module, loader, dataset, device, heads=("main",), amp: bool = True,
+                    keep_per_image: bool = True, on_image=None,
                     **evaluator_kw):
     """Evaluate heads on a loader at original resolution. Returns {head: PixelEvaluator}.
 

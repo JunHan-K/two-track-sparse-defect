@@ -23,7 +23,7 @@ IMAGENET_MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32)
 IMAGENET_STD = np.array([0.229, 0.224, 0.225], dtype=np.float32)
 
 
-def read_split(path):
+def read_split(path) -> list[dict]:
     """Read one split CSV, or several (list) concatenated (e.g. Core A + Mining B)."""
     if isinstance(path, (list, tuple)):
         rows = [r for p in path for r in read_split(p)]
@@ -40,7 +40,7 @@ def read_split(path):
     return rows
 
 
-def letterbox_params(h, w, input_size):
+def letterbox_params(h: int, w: int, input_size) -> tuple[int, int, float]:
     """Return (new_h, new_w, scale) for aspect-preserving fit into input_size."""
     H, W = input_size
     s = min(H / h, W / w)
@@ -163,7 +163,7 @@ def small_only_target(mask, valid, area_px, margin=3):
     return small, keep
 
 
-def size_weight_map(mask, a_ref=400.0, beta=1.0, cap=4.0):
+def size_weight_map(mask: np.ndarray, a_ref: float = 400.0, beta: float = 1.0, cap: float = 4.0) -> np.ndarray:
     """Per-pixel BCE weight: 1 on background, 1 + beta * clip(sqrt(a_ref / area) - 1, 0, cap) on a defect
     component of `area` pixels (training resolution, 8-connectivity). Small components weigh more."""
     from scipy import ndimage

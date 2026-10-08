@@ -1,4 +1,4 @@
-def build_model(cfg):
+def build_model(cfg: dict):
     m = cfg["model"]
     t = m.get("type", "segformer")
     if t == "segformer":

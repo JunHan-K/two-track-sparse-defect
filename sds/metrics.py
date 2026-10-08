@@ -3,7 +3,7 @@
 All metrics are computed at the ORIGINAL image resolution (padding removed, probability
 map upsampled) against the original binary mask.
 
-Threshold-free (2^16 score bins, resolution 1.5e-5, accumulated during evaluation):
+Threshold-free (AP_BINS score bins uniform in logit space, accumulated during evaluation; see AP_BINS below):
   pixel_ap               AP over all pixels of the split
   ratio_{g}_ap           AP of the defect pixels of images whose foreground RATIO falls in
                          group g (small/medium/large); negatives = all background pixels
@@ -37,7 +37,7 @@ AP_BINS = 262144
 LOGIT_MIN, LOGIT_MAX = -104.0, 17.0
 
 
-def logit_bin(prob, n):
+def logit_bin(prob: torch.Tensor, n: int) -> torch.Tensor:
     """Monotone map of probabilities (torch tensor) to n histogram bins, uniform in LOGIT space."""
     p = prob.double()
     z = torch.log(p) - torch.log1p(-p)  # +inf at p == 1, -inf at p == 0: clamped to the end bins
@@ -45,7 +45,7 @@ def logit_bin(prob, n):
     return ((z - LOGIT_MIN) / (LOGIT_MAX - LOGIT_MIN) * n).long().clamp_(0, n - 1)
 
 
-def ap_bin(prob):
+def ap_bin(prob: torch.Tensor) -> torch.Tensor:
     return logit_bin(prob, AP_BINS)
 
 
@@ -56,7 +56,7 @@ THR_BINS = 8192
 GROUPS = ("small", "medium", "large")
 
 
-def thr_value(k):
+def thr_value(k: int) -> float:
     """Threshold value of grid index k: pixel predicted positive iff its bin >= k (prob >= thr_value(k))."""
     if k <= 0:
         return 0.0
@@ -68,7 +68,7 @@ def _group(x, edges):
     return "small" if x < q33 else ("medium" if x < q66 else "large")
 
 
-def step_ap(pos, neg):
+def step_ap(pos: np.ndarray, neg: np.ndarray) -> float:
     """Step-wise AP from score histograms (index = ascending score bin); ties share a bin."""
     pos = np.asarray(pos, dtype=np.float64)[::-1]
     neg = np.asarray(neg, dtype=np.float64)[::-1]
@@ -81,7 +81,7 @@ def step_ap(pos, neg):
     return float(np.sum((rec - np.concatenate([[0.0], rec[:-1]])) * prec))
 
 
-def ap_from_scores(y, s):
+def ap_from_scores(y, s) -> float:
     """Exact step-wise AP for (label, score) pairs; equal scores form one threshold."""
     y, s = np.asarray(y).astype(int), np.asarray(s, dtype=np.float64)
     if y.sum() == 0:
@@ -92,7 +92,7 @@ def ap_from_scores(y, s):
     return step_ap(pos, neg)
 
 
-def auroc_from_scores(y, s):
+def auroc_from_scores(y, s) -> float:
     from scipy.stats import rankdata
 
     y, s = np.asarray(y).astype(int), np.asarray(s, dtype=np.float64)
@@ -103,7 +103,7 @@ def auroc_from_scores(y, s):
     return float((r[y == 1].sum() - n1 * (n1 + 1) / 2) / (n1 * n0))
 
 
-def tolerance_keep(g, tol):
+def tolerance_keep(g: np.ndarray, tol: int) -> np.ndarray:
     """Boundary tolerance (crack-segmentation practice; same for every method). Returns the mask of
     BACKGROUND pixels that still count as negatives: background within `tol` px of a GT defect is ignored
     (a prediction there is not a false positive). Every GT pixel stays a positive; its score is the max
@@ -114,7 +114,7 @@ def tolerance_keep(g, tol):
     return ~outer
 
 
-def pd_fa_counts(pred, g, comp_ratio, comp_edges, dist=3.0):
+def pd_fa_counts(pred: np.ndarray, g: np.ndarray, comp_ratio: np.ndarray, comp_edges, dist: float = 3.0) -> tuple:
     """IRSTD target-level protocol (DNANet / MSHNet utils/metric.py PD_FA), at a fixed threshold:
     predicted 8-connected components are matched greedily to GT components whose centroid lies
     < `dist` px away (each prediction used once). Pd = matched / GT components; Fa = pixel area of
@@ -141,7 +141,8 @@ def pd_fa_counts(pred, g, comp_ratio, comp_edges, dist=3.0):
 
 
 class PixelEvaluator:
-    def __init__(self, keep_per_image=True, size_edges=None, comp_edges=None, category_fn=None, tol=0):
+    def __init__(self, keep_per_image: bool = True, size_edges: tuple | None = None, comp_edges: tuple | None = None,
+                 category_fn=None, tol: int = 0):
         self.tol = tol
         self.keep = keep_per_image
         self.size_edges, self.comp_edges, self.category_fn = size_edges, comp_edges, category_fn
@@ -155,7 +156,7 @@ class PixelEvaluator:
         self.pdfa = np.zeros(6)  # targets, matched, fa_pixels, pixels, small targets, small matched (thr 0.5)
 
     @torch.no_grad()
-    def update(self, prob, gt, image_id=None, label=None):
+    def update(self, prob: torch.Tensor, gt: torch.Tensor, image_id: str | None = None, label: int | None = None) -> None:
         """prob: float tensor (h, w) in [0, 1]; gt: {0,1} tensor (h, w)."""
         assert prob.dim() == 2 and prob.shape == gt.shape
         shape = tuple(prob.shape)
@@ -232,10 +233,10 @@ class PixelEvaluator:
                 if self.comp_edges is not None:
                     self.defect_pos[_group(ratio, self.comp_edges)] += np.bincount(qa_np[ev], minlength=AP_BINS)
 
-    def pixel_ap(self):
+    def pixel_ap(self) -> float:
         return step_ap(self.ap_pos.cpu().numpy(), self.ap_neg.cpu().numpy())
 
-    def state(self):
+    def state(self) -> dict:
         st = {"ap_pos": self.ap_pos.cpu().numpy(), "ap_neg": self.ap_neg.cpu().numpy(), "pdfa": self.pdfa.copy()}
         if not self.keep:
             return st
@@ -263,7 +264,7 @@ def _tail(h):
     return np.cumsum(h[..., ::-1], axis=-1)[..., ::-1]
 
 
-def aupro(state, fpr_limit=0.3, comp_mask=None):
+def aupro(state: dict, fpr_limit: float = 0.3, comp_mask: np.ndarray | None = None) -> float:
     """Area under the per-region-overlap curve up to FPR = fpr_limit, normalised to [0, 1]
     (Bergmann et al., IJCV 2021, the MVTec AD segmentation metric). PRO(t) = mean over GT connected
     components of the fraction of their pixels with score >= t; FPR(t) = background pixels >= t / all
@@ -288,7 +289,7 @@ def aupro(state, fpr_limit=0.3, comp_mask=None):
     return float(np.trapz(p_, f) / fpr_limit)
 
 
-def curves(state):
+def curves(state: dict) -> dict:
     pos = _tail(state["img_pos"].sum(0).astype(np.float64))
     neg = _tail(state["img_neg"].sum(0).astype(np.float64))
     P = pos[0]
@@ -304,7 +305,7 @@ def curves(state):
     return {"precision": prec, "recall": rec, "f1": f1, "iou": iou, "miou": (iou + iou_bg) / 2}
 
 
-def select_thresholds(val_state, criterion="f1", target_recall=0.9):
+def select_thresholds(val_state: dict, criterion: str = "f1", target_recall: float = 0.9) -> tuple:
     """Choose thresholds on VALIDATION only. Returns grid indices (see thr_value).
 
     k_r is None when no threshold > 0 reaches target_recall: threshold 0 marks every pixel
@@ -317,7 +318,7 @@ def select_thresholds(val_state, criterion="f1", target_recall=0.9):
     return k_best, k_r
 
 
-def threshold_free(state):
+def threshold_free(state: dict) -> dict:
     out = {"pixel_ap": step_ap(state["ap_pos"], state["ap_neg"])}
     if "img_max" not in state:
         return out
@@ -336,7 +337,8 @@ def threshold_free(state):
     return out
 
 
-def metrics_at(state, k, k_r90=None, size_edges=None, comp_edges=None):
+def metrics_at(state: dict, k: int, k_r90: int | None = None, size_edges: tuple | None = None,
+               comp_edges: tuple | None = None) -> dict:
     """Threshold-based metrics at grid index k (selected on validation) + threshold-free ones."""
     c = curves(state)
     pos, neg = state["img_pos"].astype(np.int64), state["img_neg"].astype(np.int64)
@@ -391,5 +393,5 @@ def metrics_at(state, k, k_r90=None, size_edges=None, comp_edges=None):
     return out
 
 
-def ap_from_state(state):
+def ap_from_state(state: dict) -> float:
     return step_ap(state["ap_pos"], state["ap_neg"])

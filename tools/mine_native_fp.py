@@ -93,14 +93,21 @@ def main():
                     if m.sum() / g.size < q33:
                         ys, xs = np.nonzero(m)
                         pos.append({"id": row["id"], "cy": float(ys.mean() + sl[0].start), "cx": float(xs.mean() + sl[1].start)})
+            # random control: exactly as many background points as native false positives of this image
             for _ in range(len(found)):
                 for _t in range(50):
                     y, x = int(rng.integers(0, g.shape[0])), int(rng.integers(0, g.shape[1]))
                     if not gd[y, x]:
-                        rand.append({"id": row["id"], "cy": float(y), "cx": float(x)})
                         break
+                else:  # 50 rejections in a row (defects cover most of the image): draw among background pixels
+                    bg = np.flatnonzero(~gd)
+                    if not len(bg):
+                        raise SystemExit(f"{row['id']}: no background pixel for the random control")
+                    y, x = np.unravel_index(int(rng.choice(bg)), gd.shape)
+                rand.append({"id": row["id"], "cy": float(y), "cx": float(x)})
             n_img += 1
         stats[split] = {"images": n_img, "native_fp": n_fp}
+    assert len(rand) == len(fp), "the random control must match the native false positives in number"
     rep = {"native": True, "crop": crop, "splits": [d["core_split"], d["mining_split"]],
            "pos": pos, "bg": {"native_fp": fp, "native_only": only, "random": rand},
            "stats": {**stats, "pos_small": len(pos), "native_fp": len(fp), "native_only": len(only), "random": len(rand)},

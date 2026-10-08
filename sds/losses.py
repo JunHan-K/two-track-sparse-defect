@@ -2,7 +2,8 @@ import torch
 import torch.nn.functional as F
 
 
-def bce_dice(logits, target, valid, eps=1.0, weight=None):
+def bce_dice(logits: torch.Tensor, target: torch.Tensor, valid: torch.Tensor, eps: float = 1.0,
+             weight: torch.Tensor | None = None) -> torch.Tensor:
     """L_seg = BCE + soft Dice, both restricted to non-padded pixels.
 
     Dice is computed over the whole batch (per-image Dice is ill-defined for the
@@ -19,7 +20,8 @@ def bce_dice(logits, target, valid, eps=1.0, weight=None):
     return bce + dice
 
 
-def seg_loss(out, target, valid, lambda_aux=1.0, pos_weight=None, spec=None):
+def seg_loss(out: dict, target: torch.Tensor, valid: torch.Tensor, lambda_aux: float = 1.0,
+             pos_weight: torch.Tensor | None = None, spec: tuple | None = None) -> tuple[torch.Tensor, dict]:
     """L = L_main + lambda_aux * mean_k L_k over the auxiliary (stage) heads.
 
     pos_weight: size-aware per-pixel BCE weight of the main head (1 on background).

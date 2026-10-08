@@ -42,7 +42,12 @@ def main():
     try:
         from torch.utils.flop_counter import FlopCounterMode
 
-        with torch.no_grad(), FlopCounterMode(display=False) as fc:
+        def grid_sample_flops(inp_shape, grid_shape, *args, out_shape=None, **kw):
+            # not counted by default (Mask2Former's deformable attention): bilinear = 4 x (mul + add) per output value
+            return inp_shape[0] * inp_shape[1] * grid_shape[1] * grid_shape[2] * 8
+
+        with torch.no_grad(), FlopCounterMode(display=False,
+                                              custom_mapping={torch.ops.aten.grid_sampler_2d: grid_sample_flops}) as fc:
             model(x, return_aux=False)
         flops = fc.get_total_flops()
     except Exception as e:  # older torch
