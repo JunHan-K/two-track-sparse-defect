@@ -1,0 +1,10 @@
+# data, weights, third-party code and run outputs are never committed
+data/*
+!data/splits/
+pretrained
+third_party/
+outputs/
+results/
+__pycache__/
+*.pyc
+.pytest_cache/

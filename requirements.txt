@@ -1,0 +1,15 @@
+# Pinned versions used for development and unit tests (Python 3.10).
+# Install torch/torchvision first for your CUDA version, e.g.
+#   pip install torch==2.3.1 torchvision==0.18.1 --index-url https://download.pytorch.org/whl/cu121
+torch==2.3.1
+torchvision==0.18.1
+transformers==4.44.2
+huggingface_hub==0.36.2
+safetensors==0.8.0
+segmentation-models-pytorch==0.3.4
+timm==0.9.7
+numpy==1.26.4
+scipy==1.15.3
+pillow==12.3.0
+PyYAML==6.0.3
+pytest==9.1.1

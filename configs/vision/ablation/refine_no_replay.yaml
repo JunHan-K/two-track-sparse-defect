@@ -1,0 +1,42 @@
+# Ablation: refinement with the same steps but no replay.
+experiment_id: vision_abl_refine_no_replay
+seed: 42
+output_root: outputs
+data:
+  name: VISION
+  split_version: vision_seed42_v1
+  core_split: data/splits/vision/core.csv
+  train_split: [data/splits/vision/core.csv, data/splits/vision/mining.csv]
+  mining_split: data/splits/vision/mining.csv
+  val_split: data/splits/vision/val.csv
+  test_split: data/splits/vision/test.csv
+  input_size: [1024, 1024]
+  mask_resize_threshold: 0.5
+  subset: 13cats
+  category_from_id: true
+model: {type: segformer, pretrained: pretrained/mit-b0, head: stagewise, rep_dim: 128, head_hidden: 32, lambda_aux: 1.0, fusion: none}
+train:
+  epochs: 20
+  batch_size: 4
+  eval_batch_size: 4
+  grad_accum: 2
+  lr: 3.0e-05
+  head_lr_mult: 10.0
+  weight_decay: 0.01
+  scheduler: poly
+  poly_power: 1.0
+  warmup_ratio: 0.05
+  amp: false
+  grad_clip: 1.0
+  eval_interval: 1
+  num_workers: 4
+  deterministic: false
+  aug: {hflip: 0.5, vflip: 0.5, brightness: 0.1, contrast: 0.1}
+  size_weight: {a_ref: auto, beta: 1.0, cap: 4.0}
+  size_split:
+    heads: [s1, s2]
+    area_px: auto
+    margin: 3
+  zoom: {crop: 384, every: 2, batch: 8, p_defect: 0.5}
+refine: {enabled: true, init_checkpoint: outputs/vision_ours_stage1/best.pt, replay_type: none, full_per_replay: 3, replay_batch_size: 8,
+  match_budget: true}

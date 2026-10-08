@@ -1,0 +1,35 @@
+# U-Net (ResNet-34).
+experiment_id: mvtec_unet
+seed: 42
+output_root: outputs
+data:
+  name: MVTecAD
+  split_version: mvtec_ds_seed42_v1
+  core_split: data/splits/mvtec_ds/core.csv
+  train_split: data/splits/mvtec_ds/core.csv
+  mining_split: data/splits/mvtec_ds/mining.csv
+  val_split: data/splits/mvtec_ds/val.csv
+  test_split: data/splits/mvtec_ds/test.csv
+  input_size: [512, 512]
+  mask_resize_threshold: 0.5
+  subset: all15
+  category_from_id: true
+model: {type: unet, pretrained: pretrained/mit-b0, head: original, rep_dim: 128, head_hidden: 32, lambda_aux: 1.0, encoder: resnet34}
+train:
+  epochs: 300
+  batch_size: 8
+  eval_batch_size: 8
+  grad_accum: 1
+  lr: 0.0001
+  head_lr_mult: 1.0
+  weight_decay: 0.01
+  scheduler: poly
+  poly_power: 1.0
+  warmup_ratio: 0.05
+  amp: false
+  grad_clip: 1.0
+  eval_interval: 5
+  num_workers: 4
+  deterministic: false
+  aug: {hflip: 0.5, vflip: 0.5, brightness: 0.1, contrast: 0.1}
+refine: {enabled: false}

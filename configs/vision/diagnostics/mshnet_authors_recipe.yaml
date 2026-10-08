@@ -1,0 +1,37 @@
+# Diagnostic: MSHNet with its authors' recipe (random crops, SLS loss).
+experiment_id: vision_diag_mshnet_authors_recipe
+seed: 42
+output_root: outputs
+data:
+  name: VISION
+  split_version: vision_seed42_v1
+  core_split: data/splits/vision/core.csv
+  train_split: [data/splits/vision/core.csv, data/splits/vision/mining.csv]
+  mining_split: data/splits/vision/mining.csv
+  val_split: data/splits/vision/val.csv
+  test_split: data/splits/vision/test.csv
+  input_size: [1024, 1024]
+  mask_resize_threshold: 0.5
+  subset: 13cats
+  category_from_id: true
+model: {type: mshnet, pretrained: pretrained/mit-b0, head: original, rep_dim: 128, head_hidden: 32, lambda_aux: 1.0, warm_epoch: 5}
+train:
+  epochs: 100
+  batch_size: 8
+  eval_batch_size: 4
+  grad_accum: 1
+  lr: 0.05
+  head_lr_mult: 10.0
+  weight_decay: 0.01
+  scheduler: poly
+  poly_power: 1.0
+  warmup_ratio: 0.05
+  amp: false
+  grad_clip: 1.0
+  eval_interval: 2
+  num_workers: 4
+  deterministic: false
+  aug: {hflip: 0.5, vflip: 0.5, brightness: 0.1, contrast: 0.1}
+  optimizer: adagrad
+  random_crop: 512
+refine: {enabled: false}

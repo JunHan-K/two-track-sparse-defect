@@ -1,0 +1,122 @@
+{
+  "rule": "keep category if median polygon rectangularity < 0.9",
+  "categories": {
+    "Cable": {
+      "median_rectangularity": 0.674,
+      "n_polygons": 337,
+      "kept": true
+    },
+    "Capacitor": {
+      "median_rectangularity": 0.671,
+      "n_polygons": 94,
+      "kept": true
+    },
+    "Casting": {
+      "median_rectangularity": 0.721,
+      "n_polygons": 242,
+      "kept": true
+    },
+    "Console": {
+      "median_rectangularity": 0.682,
+      "n_polygons": 461,
+      "kept": true
+    },
+    "Cylinder": {
+      "median_rectangularity": 0.707,
+      "n_polygons": 826,
+      "kept": true
+    },
+    "Electronics": {
+      "median_rectangularity": 0.61,
+      "n_polygons": 135,
+      "kept": true
+    },
+    "Groove": {
+      "median_rectangularity": 0.613,
+      "n_polygons": 166,
+      "kept": true
+    },
+    "Hemisphere": {
+      "median_rectangularity": 0.691,
+      "n_polygons": 1059,
+      "kept": true
+    },
+    "Lens": {
+      "median_rectangularity": 0.647,
+      "n_polygons": 772,
+      "kept": true
+    },
+    "PCB_1": {
+      "median_rectangularity": 0.832,
+      "n_polygons": 396,
+      "kept": true
+    },
+    "PCB_2": {
+      "median_rectangularity": 0.984,
+      "n_polygons": 683,
+      "kept": false
+    },
+    "Ring": {
+      "median_rectangularity": 0.702,
+      "n_polygons": 216,
+      "kept": true
+    },
+    "Screw": {
+      "median_rectangularity": 0.745,
+      "n_polygons": 434,
+      "kept": true
+    },
+    "Wood": {
+      "median_rectangularity": 0.677,
+      "n_polygons": 282,
+      "kept": true
+    }
+  },
+  "kept": [
+    "Cable",
+    "Capacitor",
+    "Casting",
+    "Console",
+    "Cylinder",
+    "Electronics",
+    "Groove",
+    "Hemisphere",
+    "Lens",
+    "PCB_1",
+    "Ring",
+    "Screw",
+    "Wood"
+  ],
+  "counts": {
+    "core": {
+      "n": 559,
+      "pos": 559
+    },
+    "mining": {
+      "n": 120,
+      "pos": 120
+    },
+    "val": {
+      "n": 121,
+      "pos": 121
+    },
+    "test": {
+      "n": 939,
+      "pos": 939
+    }
+  },
+  "image_sizes": {
+    "1200x1600": 481,
+    "1024x1280": 186,
+    "2748x3840": 159,
+    "1440x1080": 120,
+    "1176x2456": 105,
+    "964x1292": 102,
+    "1080x1920": 81,
+    "480x640": 77,
+    "480x632": 49,
+    "2048x2448": 47,
+    "512x512": 46,
+    "1280x1920": 33
+  }
+}

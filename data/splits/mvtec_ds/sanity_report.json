@@ -1,0 +1,64 @@
+{
+  "protocol": "Defect Spectrum (ECCV 2024): 5 defect images per defect type per object for training; remaining defect images: 20% validation, rest test (seed 42); defect images only",
+  "issues": [],
+  "counts": {
+    "core": 365,
+    "mining": 0,
+    "val": 177,
+    "test": 716
+  },
+  "defect_types": 73,
+  "per_category": {
+    "core": {
+      "bottle": 15,
+      "cable": 40,
+      "capsule": 25,
+      "carpet": 25,
+      "grid": 25,
+      "hazelnut": 20,
+      "leather": 25,
+      "metal": 20,
+      "pill": 35,
+      "screw": 25,
+      "tile": 25,
+      "toothbrush": 5,
+      "transistor": 20,
+      "wood": 25,
+      "zipper": 35
+    },
+    "val": {
+      "bottle": 9,
+      "cable": 10,
+      "capsule": 17,
+      "carpet": 12,
+      "grid": 5,
+      "hazelnut": 10,
+      "leather": 14,
+      "metal": 15,
+      "pill": 21,
+      "screw": 20,
+      "tile": 12,
+      "toothbrush": 5,
+      "transistor": 4,
+      "wood": 7,
+      "zipper": 16
+    },
+    "test": {
+      "bottle": 39,
+      "cable": 42,
+      "capsule": 67,
+      "carpet": 52,
+      "grid": 27,
+      "hazelnut": 40,
+      "leather": 53,
+      "metal": 58,
+      "pill": 85,
+      "screw": 74,
+      "tile": 47,
+      "toothbrush": 20,
+      "transistor": 16,
+      "wood": 28,
+      "zipper": 68
+    }
+  }
+}
