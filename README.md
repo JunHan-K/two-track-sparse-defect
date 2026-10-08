@@ -1,6 +1,6 @@
 # Seeing the Few Pixels That Matter: Lightweight Two-Track Segmentation for Sparse Defect Inspection
 
-Code for the paper submitted to IEEE ICCE 2027.
+Code for the paper submitted to IEEE ICCE 2027 (release `v1.0-icce2027` = the submitted version).
 
 Defects on consumer-electronics parts often cover a few pixels of a multi-megapixel image. A lightweight
 segmenter that works on the downscaled image loses them; the same segmenter applied to native-resolution tiles
@@ -31,8 +31,34 @@ Test splits, mean over 3 seeds, thresholds selected on validation. AP<sub>s</sub
 percentile of training component area; AP<sup>3</sup>: 3-pixel boundary-tolerant AP. Full tables (all
 competitors, standard deviations, ablation) are produced by `tools/paper_tables.py`.
 
-*The results table is being finalised (all AP values are being re-computed with the exact-AP evaluator in
-`sds/metrics.py`) and will be added here shortly.*
+**VISION** (sparse defects; 81% of the defect regions cover < 0.1% of the image)
+
+| Method | Params | GFLOPs | Latency | AP | AP<sub>s</sub> | AP<sub>s</sub><sup>3</sup> | AUPRO<sub>s</sub> |
+|---|---|---|---|---|---|---|---|
+| SegFormer-B0 | 3.7M | 87 | 58 ms | 86.0 | 1.5 | 3.1 | 83.0 |
+| SegFormer-B0, 1536<sup>2</sup> input | 3.7M | 290 | 120 ms | 87.3 | 3.7 | 10.7 | 84.8 |
+| U-Net (R34) | 24.4M | 250 | 58 ms | 81.1 | 1.2 | 4.2 | 54.5 |
+| SegFormer-B5 | 84.6M | 1120 | 97 ms | **89.1** | 3.9 | 9.8 | 86.0 |
+| Mask2Former (Swin-T) | 47.4M | 540 | 110 ms | 88.3 | 2.7 | 5.1 | 81.7 |
+| **Ours, precision mode** | 3.8M | 125 | 116 ms | 88.2 | **5.6** | **18.9** | 90.2 |
+| **Ours, recall mode** | 3.8M | 308 | 302 ms | 87.4 | 5.0 | 18.4 | **91.5** |
+
+<p align="center"><img src="docs/accuracy_vs_compute.png" width="520" alt="small-defect AP vs compute on VISION"></p>
+
+**MVTec AD** (Defect Spectrum protocol)
+
+| Method | Params | AP | AP<sub>s</sub> | AUPRO | mIoU |
+|---|---|---|---|---|---|
+| SegFormer-B0 | 3.7M | 90.8 | 10.8 | 96.3 | 87.1 |
+| SegFormer-B5 | 84.6M | 92.5 | 12.9 | 96.6 | **88.0** |
+| HRNet-W18-small | 3.9M | 90.7 | 18.7 | 95.3 | 86.6 |
+| SuperSimpleNet | 33.7M | 88.6 | 12.7 | 96.3 | 83.7 |
+| **Ours, precision mode** | 3.8M | **92.9** | **19.7** | **97.7** | 87.8 |
+
+Latency: one A100, batch 1, end to end from the decoded image to the full-resolution map (resizing included), mean
+over 200 test images; GFLOPs count a multiply-add as 2. The precision mode costs 1.4x the FLOPs of SegFormer-B0
+but its latency is close to that of the larger models, because reading and handling the full-resolution image
+dominates it. On VISION the 22x larger SegFormer-B5 remains more accurate on large defects (overall AP, mIoU).
 
 ## Setup
 
@@ -91,7 +117,7 @@ python tools/analysis/bootstrap_small.py        # paired bootstrap of the small-
 |---|---|
 | `configs/<ds>/ours_stage1.yaml`, `ours.yaml` | ours (before / after confusion replay) |
 | `configs/<ds>/baselines/*.yaml` | SegFormer-B0/B5, B0 at 1536^2, U-Net, DeepLabV3+, HRNet-W18-small, BiSeNetV2, Mask2Former, DNANet, MSHNet |
-| `tools/external/magnet_seg.py`, `supersimplenet_seg.py` | MagNet (VISION), SuperSimpleNet (MVTec AD), with the authors' code |
+| `tools/external/magnet_seg.py`, `supersimplenet_seg.py` | MagNet (VISION), SuperSimpleNet (MVTec AD), with the authors' code (SuperSimpleNet runs in the environment of its repository: PyTorch Lightning, anomalib) |
 | `configs/<ds>/ablation/*.yaml` | ablation (two views, stage heads, size-aware supervision, inference-time fusion, refinement controls, update-matched B0) |
 | `configs/vision/diagnostics/*.yaml` | small-target models with their authors' recipes and on native crops |
 | `tools/external/irstd_sanity.py` | DNANet / MSHNet reproduced on their own benchmarks (NUAA-SIRST, IRSTD-1k) |

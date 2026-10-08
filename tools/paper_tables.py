@@ -73,7 +73,13 @@ def cell(vals, digits=1):
     return s + ("" if len(vals) >= 3 else r"$^\dagger$")
 
 
+# runs without an efficiency.json (external code): parameters counted once in the authors' environment
+PARAMS = {"mvtec_supersimplenet": "33.7M"}  # SuperSimpleNet: WideResNet50 (layers 1-3) + adaptor + heads
+
+
 def params(exp):
+    if exp in PARAMS:
+        return PARAMS[exp]
     for s in SEEDS:
         f = ROOT / "outputs" / (exp + s) / "efficiency.json"
         if f.exists():
