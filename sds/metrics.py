@@ -13,7 +13,7 @@ Threshold-free (2^16 score bins, resolution 1.5e-5, accumulated during evaluatio
   image_ap, image_auroc  image score = max pixel probability; ties are handled as one
                          threshold (independent of input order)
 
-Threshold-based (validation-selected threshold, 1/THR_BINS grid, from per-image histograms):
+Threshold-based (validation-selected threshold on a logit-space grid of THR_BINS, from per-image histograms):
   precision, recall, f1, foreground_iou, normal_fp_area (mean FP area on defect-free images),
   fp_at_val_r90 + recall_at_val_r90 (FP area / recall on THIS split at the threshold that
   gave recall >= 0.9 on validation — recall on the test split is NOT fixed to 0.9; NaN when
@@ -37,19 +37,30 @@ AP_BINS = 262144
 LOGIT_MIN, LOGIT_MAX = -104.0, 17.0
 
 
-def ap_bin(prob):
-    """Monotone map of probabilities (torch tensor) to AP histogram bins (logit space)."""
+def logit_bin(prob, n):
+    """Monotone map of probabilities (torch tensor) to n histogram bins, uniform in LOGIT space."""
     p = prob.double()
     z = torch.log(p) - torch.log1p(-p)  # +inf at p == 1, -inf at p == 0: clamped to the end bins
     z = z.clamp(LOGIT_MIN, LOGIT_MAX)
-    return ((z - LOGIT_MIN) / (LOGIT_MAX - LOGIT_MIN) * AP_BINS).long().clamp_(0, AP_BINS - 1)
-THR_BINS = 4096
+    return ((z - LOGIT_MIN) / (LOGIT_MAX - LOGIT_MIN) * n).long().clamp_(0, n - 1)
+
+
+def ap_bin(prob):
+    return logit_bin(prob, AP_BINS)
+
+
+# Threshold grid (thresholded metrics, AUPRO, per-component histograms), also uniform in logit space: a uniform
+# probability grid put almost all background pixels of confident models into its first bin (p < 1/4096), so the
+# PRO curve was sampled at only a few FPR values and AUPRO changed by ~7 points per 4x coarser grid.
+THR_BINS = 8192
 GROUPS = ("small", "medium", "large")
 
 
 def thr_value(k):
-    """Threshold value of grid index k: pixel predicted positive iff prob >= k / THR_BINS."""
-    return k / THR_BINS
+    """Threshold value of grid index k: pixel predicted positive iff its bin >= k (prob >= thr_value(k))."""
+    if k <= 0:
+        return 0.0
+    return float(1.0 / (1.0 + np.exp(-(LOGIT_MIN + k * (LOGIT_MAX - LOGIT_MIN) / THR_BINS))))
 
 
 def _group(x, edges):
@@ -184,8 +195,8 @@ class PixelEvaluator:
         if n_fg and self.size_edges is not None:
             self.ratio_pos[_group(n_fg / gt2.numel(), self.size_edges)] += pa_np
 
-        qt = (prob * THR_BINS).long().clamp_(max=THR_BINS - 1)
-        qt_pos = (pos_prob * THR_BINS).long().clamp_(max=THR_BINS - 1)
+        qt = logit_bin(prob, THR_BINS)
+        qt_pos = logit_bin(pos_prob, THR_BINS)
         self.img_pos.append(torch.bincount(qt_pos[gt2.flatten()], minlength=THR_BINS).cpu().numpy().astype(np.int32))
         self.img_neg.append(torch.bincount(qt[~gt], minlength=THR_BINS).cpu().numpy().astype(np.int32))
         self.img_label.append(int(label) if label is not None else int(n_fg > 0))
@@ -206,7 +217,7 @@ class PixelEvaluator:
             lab = lab.ravel()
             fq = pos_prob  # tolerant positive scores (= full_prob when tol == 0)
             qa_np = ap_bin(fq).cpu().numpy()
-            qt_np = (fq * THR_BINS).long().clamp_(max=THR_BINS - 1).cpu().numpy()
+            qt_np = logit_bin(fq, THR_BINS).cpu().numpy()
             pm = fq.cpu().numpy()
             km = np.ones(lab.shape, bool)  # every GT pixel stays a positive
             k_img = len(self.img_ids) - 1

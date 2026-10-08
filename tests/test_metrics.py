@@ -2,7 +2,7 @@ import numpy as np
 import torch
 from scipy import ndimage
 
-from sds.metrics import (THR_BINS, PixelEvaluator, ap_from_scores, ap_from_state, metrics_at, select_thresholds,
+from sds.metrics import (THR_BINS, PixelEvaluator, logit_bin, ap_from_scores, ap_from_state, metrics_at, select_thresholds,
                          thr_value)
 
 SIZE_EDGES = (0.003, 0.006)
@@ -99,14 +99,15 @@ def test_thresholded_metrics_match_bruteforce():
 
 def test_defect_level_metrics_and_categories():
     st, probs, gts, ids = _synthetic(category_fn=lambda i: i.split("_")[0])
-    k = THR_BINS // 2  # 0.5
+    k = int(logit_bin(torch.tensor([0.5]), THR_BINS)[0])  # grid index of the bin holding 0.5
+    t = thr_value(k)
     m = metrics_at(st, k, None, SIZE_EDGES, COMP_EDGES)
     det, cov, areas = [], [], []
     for p, g in zip(probs, gts):
         lab, n = ndimage.label(g, structure=np.ones((3, 3)))
         for j in range(1, n + 1):
-            det.append(p[lab == j].max() >= 0.5)
-            cov.append((p[lab == j] >= 0.5).mean())
+            det.append(p[lab == j].max() >= t)
+            cov.append((p[lab == j] >= t).mean())
             areas.append((lab == j).sum() / g.size)
     assert len(st["comp_max"]) == len(det) == 8
     assert abs(m["defect_det"] - np.mean(det)) < 1e-9
