@@ -21,12 +21,24 @@ sys.path.insert(0, str(ROOT))
 from sds.metrics import step_ap  # noqa: E402
 
 OURS = ("Ours (precision)", "vision_ours", "zoom_main_masked_d16_o0.5_t0.02_n32")
-OTHERS = [("SegFormer-B0", "vision_segformer_b0", "main"),
-          ("SegFormer-B0, 1536", "vision_segformer_b0_1536", "main"),
-          ("U-Net", "vision_unet", "main"),
-          ("SegFormer-B5", "vision_segformer_b5", "main"),
-          ("Mask2Former", "vision_mask2former", "main"),
-          ("Ours w/o replay", "vision_ours_stage1", "zoom_main_masked_d16_o0.5_t0.02_n32")]
+OTHERS = [  # every competitor of Table II, plus our own variants (precision mode)
+    ("SegFormer-B0", "vision_segformer_b0", "main"),
+    ("SegFormer-B0 + tiles", "vision_segformer_b0", "zoom_tile"),
+    ("SegFormer-B0, 1536", "vision_segformer_b0_1536", "main"),
+    ("SegFormer-B5", "vision_segformer_b5", "main"),
+    ("U-Net", "vision_unet", "main"),
+    ("DeepLabV3+", "vision_deeplabv3p", "main"),
+    ("HRNet-W18-small", "vision_hrnet_w18s", "main"),
+    ("BiSeNetV2", "vision_bisenetv2", "main"),
+    ("Mask2Former", "vision_mask2former", "main"),
+    ("MagNet", "vision_magnet", "main"),
+    ("MagNet (authors' loss)", "vision_magnet_authors_loss", "main"),
+    ("DNANet", "vision_dnanet", "main"),
+    ("MSHNet", "vision_mshnet", "main"),
+    ("Ours w/o replay", "vision_ours_stage1", "zoom_main_masked_d16_o0.5_t0.02_n32"),
+    ("Ours, refinement w/o replay", "vision_abl_refine_no_replay", "zoom_main_masked_d16_o0.5_t0.02_n32"),
+    ("Ours, random-background replay", "vision_abl_refine_random_background", "zoom_main_masked_d16_o0.5_t0.02_n32"),
+]
 
 
 def load(exp, tag, tol):

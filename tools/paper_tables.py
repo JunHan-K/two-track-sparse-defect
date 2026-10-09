@@ -128,25 +128,23 @@ MVTEC_COLS = [("AP", "pixel_ap", 0, 100, 1), ("AP$^{3}$", "pixel_ap", 3, 100, 1)
               ("AP$_s$", "defect_small_ap", 0, 100, 1), ("AUPRO", "aupro", 0, 100, 1),
               ("AUPRO$_s$", "aupro_small", 0, 100, 1), ("mIoU", "miou", 0, 100, 1)]
 
-# Table III, block A: training components (whole view, native crops, stage heads, size-aware), precision mode.
-# The first two rows are the Core+Mining baselines of Table II; all other rows train on Core only.
+# Table III, block A: training components on top of the whole-image view (native crops, stage heads, size-aware
+# targets), precision mode. The first two rows are Core+Mining baselines as in Table II; the other rows train on Core.
+# (Stage heads without native crops, with/without size-aware targets, are discussed in the text only.)
 CK = r"\checkmark"
 ABL_A = [
-    ((CK, "", "", ""), "SegFormer-B0$^{*}$", "vision_segformer_b0"),
-    ((CK, "", "", ""), "SegFormer-B0$^{*}$, update-matched", "vision_abl_b0_update_matched"),
-    ((CK, CK, "", ""), "", "vision_abl_b0_two_views"),
-    ((CK, "", CK, ""), "", "vision_abl_stage_heads"),
-    ((CK, "", CK, CK), "", "vision_abl_stage_heads_size_aware"),
-    ((CK, CK, CK, ""), "", "vision_abl_two_views_stage_heads"),
-    ((CK, CK, CK, CK), "\\textbf{ours}", "vision_ours_stage1"),
-    ((CK, CK, CK, CK), "+ inference-time fusion of $s_1,s_2$", "vision_abl_inference_fusion"),
+    (("", "", ""), "SegFormer-B0$^{*}$", "vision_segformer_b0"),
+    (("", "", ""), "SegFormer-B0$^{*}$, update-matched", "vision_abl_b0_update_matched"),
+    ((CK, "", ""), "", "vision_abl_b0_two_views"),
+    ((CK, CK, ""), "", "vision_abl_two_views_stage_heads"),
+    ((CK, CK, CK), "\\textbf{ours} (before refinement)", "vision_ours_stage1"),
+    ((CK, CK, CK), "+ inference-time fusion of $s_1,s_2$", "vision_abl_inference_fusion"),
 ]
-# block B: refinement of the final A+B model (all three: 20 epochs on Core+Mining)
+# block B: 20-epoch refinements of "ours" on Core+Mining with the same number of steps
 ABL_B = [
-    ("none", "vision_ours_stage1"),
     ("extra training, no replay", "vision_abl_refine_no_replay"),
     ("random-background replay", "vision_abl_refine_random_background"),
-    ("confusion replay (ours)", "vision_ours"),
+    ("confusion replay (\\textbf{ours})", "vision_ours"),
 ]
 ABL_COLS = [("AP", "pixel_ap", 0, 100, 1), ("AP$_s$", "defect_small_ap", 0, 100, 1),
             ("AP$_s^{3}$", "defect_small_ap", 3, 100, 1), ("AUPRO$_s$", "aupro_small", 0, 100, 1),
@@ -161,7 +159,7 @@ def ablation_bodies(split):
         plain.append(f"A {''.join('x' if f else '-' for f in flags)} {note[:30]:30s} [{exp}] " + " ".join(cells))
     for name, exp in ABL_B:
         cells = [cell(agg(exp, "P", m, t, split, sc), d) for _, m, t, sc, d in ABL_COLS]
-        b.append(" & ".join([r"\multicolumn{5}{l}{\quad " + name + "}"] + cells) + r"\\")
+        b.append(" & ".join([r"\multicolumn{4}{l}{\quad " + name + "}"] + cells) + r"\\")
         plain.append(f"B {name:30s} [{exp}] " + " ".join(cells))
     return "\n".join(a), "\n".join(b), plain
 
