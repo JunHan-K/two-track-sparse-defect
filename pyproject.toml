@@ -30,7 +30,7 @@ dev = ["pytest"]
 figures = ["matplotlib"]
 
 [project.urls]
-Repository = "https://github.com/JunHan-K/two-track-sparse-defect"
+Repository = "https://github.com/JunHan-K/Twin-SparSight"
 
 [tool.setuptools.packages.find]
 include = ["sds*"]
