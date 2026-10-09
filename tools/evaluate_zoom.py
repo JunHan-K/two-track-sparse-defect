@@ -125,6 +125,8 @@ def main():
     ap.add_argument("--no-csv", action="store_true")
     ap.add_argument("--tol", type=int, default=0, help="boundary tolerance (original px), see evaluate.py")
     ap.add_argument("--save-probs", action="store_true", help="save final (zoomed) maps under predictions/<split>_<tag>")
+    ap.add_argument("--out-suffix", default="", help="append to the result tag (e.g. 'last' for a --ckpt last.pt diagnostic), "
+                                                     "so the main result files are never overwritten")
     args = ap.parse_args()
     if args.mode:
         for k, v in PRESETS[args.mode].items():
@@ -144,7 +146,8 @@ def main():
            + (f"_d{args.mask_dilate}" if args.merge == "masked" and args.mask_dilate != 8 else "")
            + (f"_o{args.outside:g}" if args.merge == "masked" and args.outside > 0 else "")
            + ("" if (args.tau, args.n_roi) == (0.1, 8) or args.roi_source == "tile" else f"_t{args.tau}_n{args.n_roi}")
-           + (f"_tol{args.tol}" if args.tol else ""))
+           + (f"_tol{args.tol}" if args.tol else "")
+           + (f"_{args.out_suffix}" if args.out_suffix else ""))
     results, thr = {}, None
     for split in ["val"] + (["test"] if args.test else []):
         ds = SegDataset(data[f"{split}_split"], data["input_size"], mask_resize_threshold=data.get("mask_resize_threshold", 0.5))

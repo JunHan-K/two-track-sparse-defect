@@ -215,7 +215,7 @@ def draw(out_dir):
     xe = net(ax, 1.98, ly, 0.5, LOW, label=False, stages=False)
     arrow(ax, (ix + iw + 0.02, ly), (1.96, ly), c=LOW)
     ax.text(1.88, ly + 0.25, "$\\downarrow1024^2$", fontsize=5.4, color=LOW, ha="center")
-    ax.text((1.98 + xe) / 2, ly - 0.24, "Global Sight (L)", fontsize=5.6, color=LOW, ha="center", va="top")
+    ax.text((1.98 + xe) / 2, ly - 0.24, "Global Sight Track (L)", fontsize=5.6, color=LOW, ha="center", va="top")
     px, pw = xe + 0.18, 1.45
     ph = img(ax, blend(im_, I["L"]), px, iy, pw)
     contour(ax, I["M"] > 0, px, iy, pw, ph, c="#58c4dd", lw=0.5)
@@ -238,7 +238,7 @@ def draw(out_dir):
     arrow(ax, (cb_x + b / 2, cb_y - b / 2), (zx0 - 0.02, iy + 0.12), c=NAT, rad=0.3)
     xe2 = net(ax, zx0 + zs + 0.14, iy + zs / 2 - 0.06, 0.5, NAT, label=False, stages=False)
     arrow(ax, (zx0 + zs + 0.01, iy + zs / 2 - 0.06), (zx0 + zs + 0.12, iy + zs / 2 - 0.06), c=NAT)
-    ax.text((zx0 + zs + 0.14 + xe2) / 2, iy - 0.06 + zs / 2 - 0.30, "Native Sight (S)", fontsize=5.6, color=NAT, ha="center",
+    ax.text((zx0 + zs + 0.14 + xe2) / 2, iy - 0.06 + zs / 2 - 0.30, "Native Sight Track (S)", fontsize=5.6, color=NAT, ha="center",
             va="top")
     cx1 = xe2 + 0.18
     img(ax, blend(zi, I["zoom_L"]), cx1, iy - 0.06, zs, zs, ec=LOW, lw=0.9)
@@ -252,13 +252,13 @@ def draw(out_dir):
     oy = 0.33
     rbox(ax, 0.13, oy, 3.45, 0.60, fc="white", ec=NAT, lw=0.8)
     ax.text(0.20, oy + 0.55, "Precision mode", fontsize=6.0, weight="bold", color=NAT, va="top")
-    ax.text(0.20, oy + 0.40, "Global Sight (L) on the whole image; Native Sight (S) only on the proposed crops; merge\n"
+    ax.text(0.20, oy + 0.40, "Global Sight Track (L) on the whole image; Native Sight Track (S) on the proposed crops; merge\n"
             "$p=\\max(p_L,\\ p_S\\,(1_M+0.5\\cdot 1_{\\bar{M}}))$: native evidence without global support is damped.\n"
             "3.7 native crops per image $\\Rightarrow$ 125 GFLOPs (1.4$\\times$ a single pass)",
             fontsize=5.3, va="top", linespacing=1.25)
     rbox(ax, 3.68, oy, 3.35, 0.60, fc="white", ec=MUTED, lw=0.8)
     ax.text(3.75, oy + 0.55, "Recall mode", fontsize=6.0, weight="bold", color=INK, va="top")
-    ax.text(3.75, oy + 0.38, "Native Sight (S) on all $384^2$ tiles; maximum with Global Sight (L).\n"
+    ax.text(3.75, oy + 0.38, "Native Sight Track (S) on all $384^2$ tiles; maximum with L.\n"
             "24 crops per image $\\Rightarrow$ 308 GFLOPs; highest small-defect AUPRO", fontsize=5.3, va="top",
             linespacing=1.2)
     gx, gw = 6.05, 0.90
