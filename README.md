@@ -1,29 +1,30 @@
-# Seeing the Few Pixels That Matter: Lightweight Two-Track Segmentation for Sparse Defect Inspection
+# Twin-SparSight: Balancing Global Context and Native Detail for Lightweight Sparse Defect Inspection
 
 Code for the paper submitted to IEEE ICCE 2027 (release `v1.0-icce2027` = the submitted version).
 
 Defects on consumer-electronics parts often cover a few pixels of a multi-megapixel image. A lightweight
 segmenter that works on the downscaled image loses them; the same segmenter applied to native-resolution tiles
-finds them, together with many false alarms that the wider context would have ruled out. This repository trains
+finds them, together with many false alarms that the wider context would have ruled out. **Twin-SparSight** trains
 **one 3.8 M-parameter SegFormer (MiT-B0)** to use both views and runs it as a two-track inspector.
 
 ![overview](docs/overview.png)
 
-**Training** (`configs/<dataset>/ours_stage1.yaml`, then `ours.yaml`)
+**Twin-View SparSight Training** (`configs/<dataset>/ours_stage1.yaml`)
 1. *Two views.* Every second batch of downscaled whole images is followed by a batch of 384x384 crops taken at
    the original resolution (centred on a defect with probability 0.5).
 2. *Size-aware supervision* (whole-image batches). Defect pixels of small components get up to 5x more weight in
    the BCE term of the main head. Stage heads on the four encoder stages are trained at the same time (the shallow
    two on small defects only) and are **discarded at inference**: the deployed network is the plain MiT-B0
    segmenter.
-3. *Confusion replay.* The trained model segments its own training images at native resolution; its false
+**Sparse Confusion Replay** (`configs/<dataset>/ours.yaml`)
+3. The trained model segments its own training images at native resolution; its false
    positives (print, vents, edges) and small defects are replayed in a 20-epoch refinement.
 
-**Inference** (`tools/evaluate_zoom.py`)
-- *Precision mode*: the whole image is segmented at low resolution; the 32 strongest candidate peaks are
-  re-segmented on native 384x384 crops by the same network, and native evidence outside the low-resolution
-  support is down-weighted.
-- *Recall mode*: the whole image is tiled at native resolution.
+**Twin-Track SparSight Inference** (`tools/evaluate_zoom.py`): a *Global Sight Track* (L) segments the downscaled
+whole image and a *Native Sight Track* (S), the same network, segments native-resolution 384x384 crops.
+- *Precision mode*: S re-inspects only the 32 strongest candidate peaks of L; native evidence outside the support
+  of L is down-weighted.
+- *Recall mode*: S tiles the whole image; the result is the maximum of L and S.
 
 ## Results
 
@@ -40,8 +41,8 @@ competitors, standard deviations, ablation) are produced by `tools/paper_tables.
 | U-Net (R34) | 24.4M | 250 | 58 ms | 81.1 | 1.2 | 4.2 | 54.5 |
 | SegFormer-B5 | 84.6M | 1120 | 97 ms | **89.1** | 3.9 | 9.8 | 86.0 |
 | Mask2Former (Swin-T) | 47.4M | 540 | 110 ms | 88.3 | 2.7 | 5.1 | 81.7 |
-| **Ours, precision mode** | 3.8M | 125 | 116 ms | 88.2 | **5.6** | **18.9** | 90.2 |
-| **Ours, recall mode** | 3.8M | 308 | 302 ms | 87.4 | 5.0 | 18.4 | **91.5** |
+| **Twin-SparSight, precision mode** | 3.8M | 125 | 116 ms | 88.2 | **5.6** | **18.9** | 90.2 |
+| **Twin-SparSight, recall mode** | 3.8M | 308 | 302 ms | 87.4 | 5.0 | 18.4 | **91.5** |
 
 <p align="center"><img src="docs/accuracy_vs_compute.png" width="520" alt="small-defect AP vs compute on VISION"></p>
 
@@ -53,7 +54,7 @@ competitors, standard deviations, ablation) are produced by `tools/paper_tables.
 | SegFormer-B5 | 84.6M | 92.5 | 12.9 | 96.6 | **88.0** |
 | HRNet-W18-small | 3.9M | 90.7 | 18.7 | 95.3 | 86.6 |
 | SuperSimpleNet | 33.7M | 88.6 | 12.7 | 96.3 | 83.7 |
-| **Ours, precision mode** | 3.8M | **92.9** | **19.7** | **97.7** | 87.8 |
+| **Twin-SparSight, precision mode** | 3.8M | **92.9** | **19.7** | **97.7** | 87.8 |
 
 Latency: one A100, batch 1, end to end from the decoded image to the full-resolution map (resizing included), mean
 over 200 test images; GFLOPs count a multiply-add as 2. The precision mode costs 1.4x the FLOPs of SegFormer-B0
@@ -81,7 +82,7 @@ is excluded by a rule fixed before any experiment (`data/splits/vision/sanity_re
 the Defect Spectrum protocol: 5 defect images per defect type for training, 20% of the rest for validation.
 `python tools/prepare_vision.py` and `python tools/prepare_mvtec_ds.py` regenerate them.
 
-## Our method
+## Twin-SparSight
 
 ```bash
 # 1) two-view, size-aware training
@@ -168,7 +169,7 @@ use; MiT/SegFormer weights: NVIDIA Source Code License, non-commercial; MagNet: 
 
 ```bibtex
 @inproceedings{kim2027sparse,
-  title     = {Seeing the Few Pixels That Matter: Lightweight Two-Track Segmentation for Sparse Defect Inspection},
+  title     = {{Twin-SparSight}: Balancing Global Context and Native Detail for Lightweight Sparse Defect Inspection},
   author    = {Kim, Junhan},
   booktitle = {Proc. IEEE Int. Conf. Consumer Electronics (ICCE)},
   year      = {2027},

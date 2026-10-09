@@ -51,7 +51,7 @@ PRESETS = {
             ("B0, $1536^2$", "vision_segformer_b0_1536", "", "pmain", "metrics_test.json"),
             ("U-Net (R34)", "vision_unet", "", "pmain", "metrics_test.json"),
             ("MagNet", "vision_magnet", "", "pmain", "metrics_test.json"),
-            ("ours (final)", "vision_ours", "_zoom_main_masked_d16_o0.5_t0.02_n32", "pmain",
+            ("Twin-SparSight", "vision_ours", "_zoom_main_masked_d16_o0.5_t0.02_n32", "pmain",
              "metrics_zoom_main_masked_d16_o0.5_t0.02_n32_test.json"),
         ],
     },

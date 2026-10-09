@@ -92,7 +92,7 @@ def plot(r, out):
                          "pdf.fonttype": 42, "ps.fonttype": 42})
     fig, (a, b) = plt.subplots(1, 2, figsize=(3.45, 1.75), gridspec_kw={"width_ratios": [1, 1.1], "wspace": 0.75})
     cols = {"both": "#7f7f7f", "S_only": "#7a5bb5", "L_only": "#3f6fb0", "missed": "#e6e6e6"}
-    names = {"both": "both", "S_only": "native only", "L_only": "low-res only", "missed": "missed"}
+    names = {"both": "both", "S_only": "Native Sight only", "L_only": "Global Sight only", "missed": "missed"}
     groups = [g for g in GROUPS if sum(r["gt_components"][g].values())]
     for j, g in enumerate(groups):
         c = r["gt_components"][g]
@@ -116,7 +116,7 @@ def plot(r, out):
     b.barh(y, fp, left=tp, color="#c0392b", label="false positive")
     fo = r["s_only_false"]["outside_M"] / n
     b.barh(2, fo, left=tp[2] + fp[2] - fo, color="none", edgecolor="black", hatch="////", lw=0.4,
-           label="outside low-res support")
+           label="outside Global Sight support")
     b.set_yticks(y)
     b.set_yticklabels([names[s].replace(" ", "\n", 1) for s in src], fontsize=6.5)
     b.set_xlabel("regions per image")

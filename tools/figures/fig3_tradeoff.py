@@ -38,13 +38,13 @@ POINTS = [
     ("MagNet", "vision_magnet", "full", BASE, "P"),
     ("SegFormer-B5", "vision_segformer_b5", "full", BASE, "8"),
     ("Mask2Former", "vision_mask2former", "full", BASE, "d"),
-    ("ours, precision", "vision_ours", "P", OURS, "*"),
-    ("ours, recall", "vision_ours", "R", OURS, "X"),
+    ("Twin-SparSight (precision)", "vision_ours", "P", OURS, "*"),
+    ("Twin-SparSight (recall)", "vision_ours", "R", OURS, "X"),
 ]
 
 # label offsets (points) so that neighbouring labels do not overlap
 OFFSET = {"SegFormer-B0": (2, -10, "center"), "HRNet-W18-s": (-5, 0, "right"), "BiSeNetV2": (4, 5, "left"),
-          "ours w/o replay, precision": (5, 5, "left"), "ours, precision": (5, 4, "left"),
+          "ours w/o replay, precision": (5, 5, "left"), "Twin-SparSight (precision)": (5, 4, "left"),
           "B0 + tiles": (0, -8, "center"), "Mask2Former": (5, 6, "left"), "MSHNet": (-5, 0, "right"),
           "DeepLabV3+": (5, 0, "left"), "DNANet": (5, 0, "left"), "U-Net": (5, 0, "left")}
 

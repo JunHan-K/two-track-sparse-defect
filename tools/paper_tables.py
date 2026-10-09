@@ -103,8 +103,8 @@ VISION_ROWS = [
     ("MagNet~\\cite{huynh2021magnet} (authors' loss)", "vision_magnet_authors_loss", "full"),
     ("MagNet~\\cite{huynh2021magnet} (unified loss)", "vision_magnet", "full"),
     None,
-    ("Ours, precision mode", "vision_ours", "P"),
-    ("Ours, recall mode", "vision_ours", "R"),
+    ("Twin-SparSight, precision mode", "vision_ours", "P"),
+    ("Twin-SparSight, recall mode", "vision_ours", "R"),
 ]
 VISION_COLS = [("AP", "pixel_ap", 0, 100, 1), ("AP$^{3}$", "pixel_ap", 3, 100, 1),
                ("AP$_s$", "defect_small_ap", 0, 100, 1), ("AP$_s^{3}$", "defect_small_ap", 3, 100, 1),
@@ -121,8 +121,8 @@ MVTEC_ROWS = [
     ("MSHNet~\\cite{liu2024mshnet}", "mvtec_mshnet", "full"),
     ("SuperSimpleNet~\\cite{rolih2024ssn}", "mvtec_supersimplenet", "full"),
     None,
-    ("Ours, precision mode", "mvtec_ours", "P"),
-    ("Ours, recall mode", "mvtec_ours", "R"),
+    ("Twin-SparSight, precision mode", "mvtec_ours", "P"),
+    ("Twin-SparSight, recall mode", "mvtec_ours", "R"),
 ]
 MVTEC_COLS = [("AP", "pixel_ap", 0, 100, 1), ("AP$^{3}$", "pixel_ap", 3, 100, 1),
               ("AP$_s$", "defect_small_ap", 0, 100, 1), ("AUPRO", "aupro", 0, 100, 1),
@@ -137,14 +137,14 @@ ABL_A = [
     (("", "", ""), "SegFormer-B0$^{*}$, update-matched", "vision_abl_b0_update_matched"),
     ((CK, "", ""), "", "vision_abl_b0_two_views"),
     ((CK, CK, ""), "", "vision_abl_two_views_stage_heads"),
-    ((CK, CK, CK), "\\textbf{ours} (before refinement)", "vision_ours_stage1"),
+    ((CK, CK, CK), "\\textbf{Twin-SparSight}, before replay", "vision_ours_stage1"),
     ((CK, CK, CK), "+ inference-time fusion of $s_1,s_2$", "vision_abl_inference_fusion"),
 ]
 # block B: 20-epoch refinements of "ours" on Core+Mining with the same number of steps
 ABL_B = [
     ("extra training, no replay", "vision_abl_refine_no_replay"),
     ("random-background replay", "vision_abl_refine_random_background"),
-    ("confusion replay (\\textbf{ours})", "vision_ours"),
+    ("Sparse Confusion Replay (\\textbf{Twin-SparSight})", "vision_ours"),
 ]
 ABL_COLS = [("AP", "pixel_ap", 0, 100, 1), ("AP$_s$", "defect_small_ap", 0, 100, 1),
             ("AP$_s^{3}$", "defect_small_ap", 3, 100, 1), ("AUPRO$_s$", "aupro_small", 0, 100, 1),
@@ -199,8 +199,8 @@ def cost_rows(split):
                              ("U-Net (R34)", "vision_unet", None),
                              ("SegFormer-B5", "vision_segformer_b5", None),
                              ("Mask2Former (Swin-T)", "vision_mask2former", None),
-                             ("Ours, precision mode", "vision_ours", "P"),
-                             ("Ours, recall mode", "vision_ours", "R")]:
+                             ("Twin-SparSight, precision mode", "vision_ours", "P"),
+                             ("Twin-SparSight, recall mode", "vision_ours", "R")]:
         f = ROOT / "outputs" / exp / "efficiency.json"
         if not f.exists():
             out.append(f"{label} & -- & -- & -- & --\\\\")

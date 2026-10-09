@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "sparse-defect-seg"
 version = "1.0.0"
-description = "Lightweight two-track segmentation for sparse defect inspection (ICCE 2027)"
+description = "Twin-SparSight: lightweight two-track segmentation for sparse defect inspection (ICCE 2027)"
 readme = "README.md"
 license = { text = "MIT" }
 authors = [{ name = "Junhan Kim" }]
