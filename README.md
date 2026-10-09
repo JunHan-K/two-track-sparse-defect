@@ -16,9 +16,10 @@ finds them, together with many false alarms that the wider context would have ru
    the BCE term of the main head. Stage heads on the four encoder stages are trained at the same time (the shallow
    two on small defects only) and are **discarded at inference**: the deployed network is the plain MiT-B0
    segmenter.
-**Sparse Confusion Replay** (`configs/<dataset>/ours.yaml`)
-3. The trained model segments its own training images at native resolution; its false
-   positives (print, vents, edges) and small defects are replayed in a 20-epoch refinement.
+
+**Sparse Confusion Replay** (`configs/<dataset>/ours.yaml`): the trained model segments its own training images at
+native resolution; its false positives (print, vents, edges) and small defects are replayed in a 20-epoch refinement.
+
 
 **Twin-Track SparSight Inference** (`tools/evaluate_zoom.py`): a *Global Sight Track* (L) segments the downscaled
 whole image and a *Native Sight Track* (S), the same network, segments native-resolution 384x384 crops.

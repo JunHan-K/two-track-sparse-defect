@@ -1,7 +1,7 @@
-"""Fig. 1: overview of the method with real data .
+"""Fig. 1: overview of the method with real data (final method, 2026-10-05).
 
   python tools/figures/fig1_data.py --step train|replay|infer     # once: real crops / maps -> fig1_data/*.npz
-  python tools/figures/fig1_framework.py --out outputs/paper/figures
+  python tools/figures/fig1_framework.py --out paper/figures
 
 (a) Training on two views: the same image enters as a downscaled whole view (letterbox 1024^2) and as native
     384^2 crops; ONE shared MiT-B0 segmenter (encoder stages s1-s4, all-MLP decoder, main head). Size-aware
@@ -122,7 +122,7 @@ def draw(out_dir):
     ax.axis("off")
 
     # ======================================================================= (a) training on two views
-    panel(ax, 0.03, 2.30, 4.62, 2.12, "(a) Training one lightweight segmenter on two views")
+    panel(ax, 0.03, 2.30, 4.62, 2.12, "(a) Twin-View SparSight Training: one lightweight segmenter, two views")
     whole = overlay(T["whole"], T["whole_g"] > 0, GT, 0.9)
     h = img(ax, whole, 0.13, 3.38, 0.95, ec=LOW, lw=1.0)
     ax.text(0.13, 3.38 + h + 0.03, "whole image, letterbox $1024^2$", fontsize=5.6, color=LOW, va="bottom")
@@ -177,7 +177,7 @@ def draw(out_dir):
             va="center", color=INK)
 
     # ======================================================================= (b) confusion replay
-    panel(ax, 4.72, 2.30, 2.41, 2.12, "(b) Replaying the model's own confusions")
+    panel(ax, 4.72, 2.30, 2.41, 2.12, "(b) Sparse Confusion Replay")
     rw = R["whole"]
     rx, ry, rwid = 4.82, 3.10, 1.12
     rh = img(ax, rw, rx, ry, rwid)
@@ -199,12 +199,12 @@ def draw(out_dir):
             fontsize=5.0, color=SIZE, va="center", linespacing=1.0)
     arrow(ax, (rx + rwid + 0.02, ry + rh * 0.75), (cx0 - 0.03, cy0 + cs / 2), c=REP)
     rbox(ax, 5.30, 2.40, 1.78, 0.46, fc="white", ec=REP, lw=0.8)
-    ax.text(6.19, 2.63, "refine the same network for 20 epochs;\n1 of 4 batches is a replay batch\n"
+    ax.text(6.19, 2.63, "refine the same network for 20 epochs;\nreplay batch after every 3rd whole-image batch\n"
             "(50% FP crops, 50% small-defect crops)", ha="center", va="center", fontsize=5.0, color=INK, linespacing=1.05)
     arrow(ax, (6.30, cy0 - 0.52), (6.30, 2.87), c=REP)
 
     # ======================================================================= (c) two-track inference
-    panel(ax, 0.03, 0.26, 7.10, 1.98, "(c) Two-track inference with the same network")
+    panel(ax, 0.03, 0.26, 7.10, 1.98, "(c) Twin-Track SparSight Inference with the same network")
     im_ = I["img"]
     iH, iW = im_.shape[:2]
     ix, iy, iw = 0.13, 1.28, 1.45
@@ -215,7 +215,7 @@ def draw(out_dir):
     xe = net(ax, 1.98, ly, 0.5, LOW, label=False, stages=False)
     arrow(ax, (ix + iw + 0.02, ly), (1.96, ly), c=LOW)
     ax.text(1.88, ly + 0.25, "$\\downarrow1024^2$", fontsize=5.4, color=LOW, ha="center")
-    ax.text((1.98 + xe) / 2, ly - 0.24, "track L", fontsize=5.6, color=LOW, ha="center", va="top")
+    ax.text((1.98 + xe) / 2, ly - 0.24, "Global Sight (L)", fontsize=5.6, color=LOW, ha="center", va="top")
     px, pw = xe + 0.18, 1.45
     ph = img(ax, blend(im_, I["L"]), px, iy, pw)
     contour(ax, I["M"] > 0, px, iy, pw, ph, c="#58c4dd", lw=0.5)
@@ -238,7 +238,7 @@ def draw(out_dir):
     arrow(ax, (cb_x + b / 2, cb_y - b / 2), (zx0 - 0.02, iy + 0.12), c=NAT, rad=0.3)
     xe2 = net(ax, zx0 + zs + 0.14, iy + zs / 2 - 0.06, 0.5, NAT, label=False, stages=False)
     arrow(ax, (zx0 + zs + 0.01, iy + zs / 2 - 0.06), (zx0 + zs + 0.12, iy + zs / 2 - 0.06), c=NAT)
-    ax.text((zx0 + zs + 0.14 + xe2) / 2, iy - 0.06 + zs / 2 - 0.30, "track S", fontsize=5.6, color=NAT, ha="center",
+    ax.text((zx0 + zs + 0.14 + xe2) / 2, iy - 0.06 + zs / 2 - 0.30, "Native Sight (S)", fontsize=5.6, color=NAT, ha="center",
             va="top")
     cx1 = xe2 + 0.18
     img(ax, blend(zi, I["zoom_L"]), cx1, iy - 0.06, zs, zs, ec=LOW, lw=0.9)
@@ -252,14 +252,14 @@ def draw(out_dir):
     oy = 0.33
     rbox(ax, 0.13, oy, 3.45, 0.60, fc="white", ec=NAT, lw=0.8)
     ax.text(0.20, oy + 0.55, "Precision mode", fontsize=6.0, weight="bold", color=NAT, va="top")
-    ax.text(0.20, oy + 0.40, "L on the whole image; S only on the proposed crops; merge\n"
-            "$p=\\max(p_L,\\ p_S\\,(1_M+0.5\\cdot 1_{\\bar{M}}))$: native evidence without low-res support is damped.\n"
-            "3.6 native crops per image $\\Rightarrow$ 139 GFLOPs (1.6$\\times$ a single pass)",
+    ax.text(0.20, oy + 0.40, "Global Sight (L) on the whole image; Native Sight (S) only on the proposed crops; merge\n"
+            "$p=\\max(p_L,\\ p_S\\,(1_M+0.5\\cdot 1_{\\bar{M}}))$: native evidence without global support is damped.\n"
+            "3.7 native crops per image $\\Rightarrow$ 125 GFLOPs (1.4$\\times$ a single pass)",
             fontsize=5.3, va="top", linespacing=1.25)
     rbox(ax, 3.68, oy, 3.35, 0.60, fc="white", ec=MUTED, lw=0.8)
     ax.text(3.75, oy + 0.55, "Recall mode", fontsize=6.0, weight="bold", color=INK, va="top")
-    ax.text(3.75, oy + 0.38, "S on all native $384^2$ tiles; maximum with L.\n"
-            "26 crops per image $\\Rightarrow$ 429 GFLOPs; highest small-defect AUPRO", fontsize=5.3, va="top",
+    ax.text(3.75, oy + 0.38, "Native Sight (S) on all $384^2$ tiles; maximum with Global Sight (L).\n"
+            "24 crops per image $\\Rightarrow$ 308 GFLOPs; highest small-defect AUPRO", fontsize=5.3, va="top",
             linespacing=1.2)
     gx, gw = 6.05, 0.90
     gh = gw * iH / iW
