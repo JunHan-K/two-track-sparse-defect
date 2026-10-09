@@ -45,6 +45,20 @@ def test_pixel_ap_matches_bruteforce():
     assert abs(ap_from_state(st) - _bruteforce_ap(G, P)) < 1e-4
 
 
+def test_pixel_ap_separates_scores_above_float32_saturation():
+    # float64 probabilities keep logits up to ~36.7 distinct; e.g. defect logits 20 vs background logits 18 must give
+    # AP 1 (a grid capped at logit 17 merged them into one bin: AP 0.02)
+    for lp, ln in ((20.0, 18.0), (33.0, 30.0), (-30.0, -35.0)):
+        ev = PixelEvaluator(size_edges=(1.0, 2.0), comp_edges=(1.0, 2.0))
+        g = np.zeros((10, 10), np.uint8)
+        g[0, :2] = 1
+        z = torch.full((10, 10), ln, dtype=torch.float64)
+        z[0, :2] = lp
+        ev.update(torch.sigmoid(z), torch.tensor(g), "a", 1)
+        m = metrics_at(ev.state(), 0, None, (1.0, 2.0), (1.0, 2.0))
+        assert m["pixel_ap"] == 1.0 and m["defect_small_ap"] == 1.0, (lp, ln, m["pixel_ap"])
+
+
 def test_pixel_ap_separates_saturated_scores():
     # confident models put many pixels above 0.9999: a positive at 0.999999 must still rank above
     # negatives at 0.99999 (uniform probability bins merged them)

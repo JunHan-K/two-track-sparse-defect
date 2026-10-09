@@ -29,12 +29,12 @@ import torch
 from scipy import ndimage
 
 AP_BINS = 262144
-# AP histograms are binned in LOGIT space. Uniform bins in probability space merged the saturated
-# scores near 1 (and near 0) of confident models: with 65536 bins the top bin alone held ~19% of the small-defect
-# pixels of the native-resolution modes, and the small-defect AP still moved by 3 points per 4x finer bins.
-# Logits of float32 probabilities lie in [LOGIT_MIN, LOGIT_MAX] (sigmoid saturates to 1.0 above ~16.6); 262144 bins
-# over this range resolve 4e-4 in logit, i.e. the AP equals the AP on the raw float32 scores up to ties.
-LOGIT_MIN, LOGIT_MAX = -104.0, 17.0
+# AP histograms are binned in LOGIT space. Uniform bins in probability space merged the saturated scores near 1 (and
+# near 0) of confident models: with 65536 bins the top bin alone held ~19% of the small-defect pixels of the
+# native-resolution modes, and the small-defect AP still moved by 3 points per 4x finer bins. Probabilities arrive in
+# float64 (sds.engine.predict_batch), whose sigmoid saturates to exactly 1.0 only above logit ~36.7; the grid covers
+# [LOGIT_MIN, LOGIT_MAX] = [-104, 37] (5.4e-4 logit per AP bin), so the AP equals the AP on the raw scores up to ties.
+LOGIT_MIN, LOGIT_MAX = -104.0, 37.0
 
 
 def logit_bin(prob: torch.Tensor, n: int) -> torch.Tensor:

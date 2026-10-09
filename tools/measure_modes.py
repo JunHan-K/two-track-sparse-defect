@@ -1,6 +1,6 @@
 """End-to-end latency per VISION image of every model / operating point, on ONE GPU (Table IV).
 
-  python tools/measure_modes.py [--n 100] [--split test] [--out outputs/latency_vision.json]
+  python tools/measure_modes.py [--n 200] [--split test] [--out outputs/latency_vision.json]
 
 Protocol: --n images evenly spaced over the split, decoded once into memory (disk I/O excluded for every method); batch 1;
 fp32; 10 warm-up images, then torch.cuda.synchronize() around each image; mean and std over images.
@@ -75,7 +75,7 @@ def load_model(exp, device):
 @torch.no_grad()
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--n", type=int, default=100)
+    ap.add_argument("--n", type=int, default=200)
     ap.add_argument("--split", default="test")
     ap.add_argument("--out", default="outputs/latency_vision.json")
     a = ap.parse_args()

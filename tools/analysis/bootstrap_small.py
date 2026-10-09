@@ -3,8 +3,8 @@
   python tools/analysis/bootstrap_small.py [--n 2000] [--tol 3]
 
 Reads the evaluator states saved by evaluate.py / evaluate_zoom.py (outputs/<exp>/eval/test_<tag>[_tol3].npz).
-Small-defect AP is recomputed from the per-component histograms (4096 score bins; the tables use 65536, so the
-point estimates may differ in the last digit). Each bootstrap sample draws the test images with replacement, the
+Small-defect AP is recomputed from the per-component histograms on the threshold grid (8192 logit bins; the tables
+use the 262144-bin AP histograms, so the point estimates may differ in the last digit). Each bootstrap sample draws the test images with replacement, the
 SAME images for every model and seed; for every model the AP is the mean over its 3 seeds on that sample, so the
 interval covers both image sampling and the seed spread. Output: mean difference, 95% percentile interval and the
 fraction of samples in which ours is better.

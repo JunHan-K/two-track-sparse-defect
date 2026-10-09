@@ -122,7 +122,11 @@ python tools/analysis/bootstrap_small.py        # paired bootstrap of the small-
 | `configs/vision/diagnostics/*.yaml` | small-target models with their authors' recipes and on native crops |
 | `tools/external/irstd_sanity.py` | DNANet / MSHNet reproduced on their own benchmarks (NUAA-SIRST, IRSTD-1k) |
 
-All competitors use the same splits, input size, augmentation and evaluator. Changes to the reference
+All competitors use the same splits, input size, augmentation and evaluator. Models trained with their own loss
+(BiSeNetV2, Mask2Former, DNANet, MSHNet) treat the letterbox padding as background, as in their reference code; the
+others ignore it. Training budget: two-view training takes 1.24x the optimizer updates of a whole-image baseline and,
+with the 20-epoch refinement, 1.6x in total; `ablation/b0_update_matched.yaml` and the equal-step refinement controls
+(`ablation/refine_*.yaml`) separate these extra updates from the method. Changes to the reference
 implementations are limited to what the data require and are listed in the paper (SuperSimpleNet samples defect
 images only; MagNet uses per-image scales up to the native resolution; Mask2Former is re-headed for two classes;
 the small-target models and MagNet are reported with the BCE+Dice recipe because their own losses collapse).
