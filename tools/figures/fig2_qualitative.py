@@ -326,18 +326,18 @@ def draw_mixed(split, window, min_window, zoom, out_dir):
             ax.set_xlim(-0.5, s - 0.5)
             ax.set_ylim(s - 0.5, -0.5)
             if i == 0:
-                ax.set_title(title, fontsize=6.8, pad=2)
+                ax.set_title(title, fontsize=7.2, pad=2)
         cat = iid.split("_")[0]
         name = f"{label}\n({cat})" if label != "limitation" else f"recall-mode\nfalse alarm"
-        axes[i, 0].set_ylabel(name, fontsize=7.1, labelpad=2, linespacing=1.0)
-        axes[i, 0].text(0.03, 0.03, f"{s}px", transform=axes[i, 0].transAxes, fontsize=6.4, color="white",
+        axes[i, 0].set_ylabel(name, fontsize=7.2, labelpad=2, linespacing=1.0)
+        axes[i, 0].text(0.03, 0.03, f"{s}px", transform=axes[i, 0].transAxes, fontsize=7.2, color="white",
                         va="bottom", ha="left", bbox=dict(fc="black", ec="none", alpha=0.5, pad=0.8))
     if im_obj is not None:
         cax = fig.add_axes([1 - (Rm - 0.06) / FW, B / FH + 0.08, 0.07 / FW, 0.78])
         cb = fig.colorbar(im_obj, cax=cax, ticks=[0, 0.5, 1])
-        cb.ax.tick_params(labelsize=6.8, width=0.4, length=2, pad=1)
+        cb.ax.tick_params(labelsize=7.2, width=0.4, length=2, pad=1)
         cb.outline.set_linewidth(0.4)
-        cb.set_label("probability", fontsize=7.0, labelpad=1)
+        cb.set_label("probability", fontsize=7.2, labelpad=1)
     out = resolve(out_dir)
     out.mkdir(parents=True, exist_ok=True)
     for ext in ("pdf", "png"):

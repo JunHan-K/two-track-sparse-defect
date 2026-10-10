@@ -104,12 +104,12 @@ def plot(r, out):
             a.barh(j, f, left=left, color=cols[k], edgecolor="white", lw=0.4, label=names[k] if j == 0 else None)
             left += f
     a.set_yticks(range(len(groups)))
-    a.set_yticklabels([f"{g}\n(n={sum(r['gt_components'][g].values())})" for g in groups], fontsize=6.8,
+    a.set_yticklabels([f"{g}\n(n={sum(r['gt_components'][g].values())})" for g in groups], fontsize=7.0,
                       linespacing=1.0)
     a.set_xlim(0, 1)
     a.set_xlabel("fraction of defects", labelpad=1)
     a.set_title("(a) defects found", fontsize=7.4, pad=2)
-    a.legend(fontsize=6.8, frameon=False, loc="upper center", bbox_to_anchor=(0.40, -0.40), ncol=2, handlelength=0.8,
+    a.legend(fontsize=7.0, frameon=False, loc="upper center", bbox_to_anchor=(0.40, -0.40), ncol=2, handlelength=0.8,
              columnspacing=0.8, handletextpad=0.4)
     n = r["images"]
     src = ["L_only", "both", "S_only"]
@@ -122,10 +122,10 @@ def plot(r, out):
     b.barh(2, fo, left=tp[2] + fp[2] - fo, color="none", edgecolor="black", hatch="////", lw=0.4,
            label="outside support $M$")
     b.set_yticks(y)
-    b.set_yticklabels([names[s].replace(" ", "\n", 1) for s in src], fontsize=6.8, linespacing=1.0)
+    b.set_yticklabels([names[s].replace(" ", "\n", 1) for s in src], fontsize=7.0, linespacing=1.0)
     b.set_xlabel("regions per image", labelpad=1)
     b.set_title("(b) predicted regions", fontsize=7.4, pad=2)
-    b.legend(fontsize=6.8, frameon=False, loc="upper center", bbox_to_anchor=(0.40, -0.40), ncol=1, handlelength=0.8,
+    b.legend(fontsize=7.0, frameon=False, loc="upper center", bbox_to_anchor=(0.40, -0.40), ncol=1, handlelength=0.8,
              handletextpad=0.4, labelspacing=0.2)
     for ax in (a, b):
         for sp in ("top", "right"):
