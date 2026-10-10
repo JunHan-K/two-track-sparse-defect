@@ -35,7 +35,8 @@ plt.rcParams.update({"font.family": "STIXGeneral", "mathtext.fontset": "stix", "
 INK, MUTED = "#1f1f1f", "#6b6b6b"
 LOW, NAT, SIZE, REP, GT = "#2f66b3", "#7a4fc4", "#e07b1a", "#c8323c", "#2ca25f"
 ALL = "#8c510a"  # s3,4 targets (all defects); kept apart from the GT green
-NETF = "#e3ecf8"
+NETF = "#eceef1"
+NETC = "#4d5563"  # the one shared network: neutral, identical everywhere (paths carry the view colour)
 DATA = "outputs/figures/fig1_data"
 
 
@@ -75,7 +76,7 @@ def heat(p, gamma=1.0):
     return plt.get_cmap("inferno")(np.clip(p, 0, 1) ** gamma)[..., :3]
 
 
-def net(ax, x, y, s=1.0, c=LOW, label=True, stages=True):
+def net(ax, x, y, s=1.0, c=NETC, label=True, stages=True):
     """Shared segmenter icon: 4 encoder stages (shrinking), all-MLP decoder, main head."""
     hs = [0.62, 0.50, 0.38, 0.28]
     xx = x
@@ -176,21 +177,21 @@ def draw(out_dir):
     # one shared network
     nx, ny = 1.55, 2.98
     xe = net(ax, nx, ny, 0.95, label=False)
-    ax.text((nx + xe) / 2, ny + 0.38, "one MiT-B0 segmenter for both views", ha="center", va="bottom", fontsize=LAB, color=LOW)
+    ax.text((nx + xe) / 2, ny + 0.38, "one MiT-B0 segmenter for both views", ha="center", va="bottom", fontsize=LAB, color=NETC)
     seg(ax, [(wx + ww, wy + wh / 2), (nx - 0.03, wy + wh / 2)], c=LOW)
     seg(ax, [(cx_n + cs_n, cy_n + cs_n * 0.8), (1.43, cy_n + cs_n * 0.8), (1.43, ny - 0.12), (nx - 0.03, ny - 0.12)],
         c=NAT)
     # main head (logit z) -> gated logit fusion with the stage-head logits z1-z4 -> size-aware loss on the fused logit
     hb_x, hb_w = xe + 0.08, 0.30
-    rbox(ax, hb_x, ny - 0.11, hb_w, 0.22, fc=NETF, ec=LOW)
-    ax.text(hb_x + hb_w / 2, ny, "head", ha="center", va="center", fontsize=SMALL, color=LOW, zorder=5)
-    seg(ax, [(xe, ny), (hb_x - 0.01, ny)], c=LOW)
+    rbox(ax, hb_x, ny - 0.11, hb_w, 0.22, fc=NETF, ec=NETC)
+    ax.text(hb_x + hb_w / 2, ny, "head", ha="center", va="center", fontsize=SMALL, color=NETC, zorder=5)
+    seg(ax, [(xe, ny), (hb_x - 0.01, ny)], c=NETC)
     fb_x, fb_w = hb_x + hb_w + 0.13, 0.56
-    rbox(ax, fb_x, ny - 0.15, fb_w, 0.30, fc="white", ec=LOW, lw=0.9)
-    ax.text(fb_x + fb_w / 2, ny, "gated logit\nfusion", ha="center", va="center", fontsize=SMALL, color=LOW, zorder=5,
+    rbox(ax, fb_x, ny - 0.15, fb_w, 0.30, fc="white", ec=NETC, lw=0.9)
+    ax.text(fb_x + fb_w / 2, ny, "gated logit\nfusion", ha="center", va="center", fontsize=SMALL, color=NETC, zorder=5,
             linespacing=0.95)
-    seg(ax, [(hb_x + hb_w, ny), (fb_x - 0.01, ny)], c=LOW)
-    ax.text(hb_x + hb_w + 0.065, ny + 0.03, "$z$", ha="center", va="bottom", fontsize=SMALL, color=LOW)
+    seg(ax, [(hb_x + hb_w, ny), (fb_x - 0.01, ny)], c=NETC)
+    ax.text(hb_x + hb_w + 0.065, ny + 0.03, "$z$", ha="center", va="bottom", fontsize=SMALL, color=NETC)
     tx, ty, ts = 3.70, 2.44, 0.66
     img(ax, wblend(T["native"], T["native_w"], T["native_g"]), tx, ty, ts, ts, ec=SIZE, lw=1.0)
     seg(ax, [(fb_x + fb_w, ny), (tx - 0.02, ny)], c=SIZE)
@@ -215,8 +216,10 @@ def draw(out_dir):
     ax.text(lx, sy + st, "stage-head targets", fontsize=SMALL, color=MUTED, va="top")
     # the stage-head logits z1-z4 enter the gated fusion (used at inference too)
     fx0, fy0, hx_ = sxs[3] + 0.10, ny - 0.40, fb_x + fb_w / 2
-    seg(ax, [(fx0, fy0), (hx_, fy0), (hx_, ny - 0.16)], c=LOW, lw=0.8)
-    ax.text(fx0 + 0.04, fy0 - 0.02, "stage logits $z_1$\u2013$z_4$", fontsize=SMALL, color=LOW, va="top", ha="left")
+    seg(ax, [(fx0, fy0), (hx_, fy0), (hx_, ny - 0.16)], c=NETC, lw=0.8)
+    ax.text(fx0 + 0.04, fy0 + 0.02, "$z_1$\u2013$z_4$", fontsize=SMALL, color=NETC, va="bottom", ha="left")
+    ax.text(hx_ - 0.05, fy0 + 0.15, "$z_{1,2}$: evidence\n$z_{3,4}$: gate", fontsize=SMALL, color=NETC, va="center",
+            ha="right", linespacing=1.0)
     ax.text(lx, sy + 0.17, "$s_{1,2}$: small defects", fontsize=SMALL, color=SIZE, va="center")
     ax.text(lx, sy + 0.01, "$s_{3,4}$: all defects", fontsize=SMALL, color=ALL, va="bottom")
 
@@ -292,7 +295,7 @@ def draw(out_dir):
     ax.text(ix, iy + ih + 0.04, "input image", fontsize=LAB, va="bottom")
     ly = iy + ih / 2
     gx0n = ix + iw + 0.36
-    xe = net(ax, gx0n, ly, 0.5, LOW, label=False, stages=False)
+    xe = net(ax, gx0n, ly, 0.5, NETC, label=False, stages=False)
     seg(ax, [(ix + iw, ly), (gx0n - 0.02, ly)], c=LOW)
     ax.text((gx0n + xe) / 2, iy - 0.05, "Global Sight (L)\nsame MiT-B0", fontsize=LAB, color=LOW, ha="center", va="top",
             linespacing=1.0)
@@ -348,7 +351,7 @@ def draw(out_dir):
     bx1, by0, by1 = wbox(px, pw)
     for yb_, yz_ in ((by1, zy0 + zs), (by0, zy0)):
         ax.plot([bx1, zx0], [yb_, yz_], color=NAT, lw=0.7, zorder=8)
-    xe2 = net(ax, zx0 + zs + 0.24, zy0 + zs / 2, 0.5, LOW, label=False, stages=False)  # same network icon/colour
+    xe2 = net(ax, zx0 + zs + 0.24, zy0 + zs / 2, 0.5, NETC, label=False, stages=False)  # same network icon/colour
     seg(ax, [(zx0 + zs, zy0 + zs / 2), (zx0 + zs + 0.22, zy0 + zs / 2)], c=NAT)
     ax.text((zx0 + zs + 0.24 + xe2) / 2, iy - 0.05, "Native Sight (S)\nsame MiT-B0", fontsize=LAB, color=NAT, ha="center",
             va="top", linespacing=1.0)
@@ -369,7 +372,8 @@ def draw(out_dir):
     mx, my_, mr = ox + cz + 0.36, ctr, 0.125
     ring(ax, mx, my_, mr, c=INK, lw=0.8)
     ax.text(mx, my_, "max", ha="center", va="center", fontsize=SMALL, color=INK)
-    ax.text(mx, my_ - mr - 0.03, "pixel-wise, (4)", ha="center", va="top", fontsize=SMALL, color=MUTED)
+    ax.text(mx, my_ - mr - 0.03, "pixel-wise (4);\n$p_S$: $\\times1$ in $M$,\n$\\times0.5$ outside", ha="center", va="top",
+            fontsize=SMALL, color=MUTED, linespacing=1.0)
     seg(ax, [(ox + cz, yt + cz / 2), (mx - mr * 0.75, my_ + mr * 0.66)], c=LOW)
     seg(ax, [(ox + cz, yb + cz / 2), (mx - mr * 0.75, my_ - mr * 0.66)], c=NAT)
     fx_ = mx + mr + 0.24

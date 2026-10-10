@@ -46,10 +46,10 @@ POINTS = [
 # label offsets (points) so that neighbouring labels do not overlap
 OFFSET = {"SegFormer-B0": (-4, -10, "right"), "HRNet": (-5, 1, "right"), "BiSeNetV2": (4, 4, "left"),
           "Ours (precision)": (-7, 0, "right"), "Ours (recall)": (6, 0, "left"),
-          "B0 + tiles": (22, -16, "left"), "B0, $1536^2$": (5, 4, "left"), "Mask2Former": (5, -3, "left"),
-          "MSHNet": (-5, -1, "right"), "DeepLabV3+": (0, -8, "center"), "DNANet": (5, 0, "left"), "U-Net": (-5, 0, "right"),
-          "SegFormer-B5": (5, 3, "left"), "MagNet": (0, -9, "center")}
-LEADER = {"B0 + tiles"}
+          "B0 + tiles": (-14, 27, "right"), "B0, $1536^2$": (5, 4, "left"), "Mask2Former": (5, 4, "left"),
+          "MSHNet": (-16, -10, "right"), "DeepLabV3+": (4, -13, "center"), "DNANet": (6, -1, "left"),
+          "U-Net": (-6, 3, "right"), "SegFormer-B5": (5, 3, "left"), "MagNet": (0, -9, "center")}
+LEADER = {"B0 + tiles", "MSHNet"}
 
 
 def main():
@@ -77,7 +77,7 @@ def main():
         print(f"{label:26s} GFLOPs={g:7.1f} y={mu:5.1f}+-{sd:.1f} (n={len(v)})")
     ax.set_xscale("log")
     ax.set_xlim(left=24)  # room for the labels left of the lightest models
-    ax.set_ylim(bottom=-7.5, top=37)
+    ax.set_ylim(bottom=-10.5, top=37)
     ax.set_xlabel("GFLOPs per image (log)")
     ax.set_ylabel("small-defect AP" + (f"$^{{{a.tol}}}$" if a.tol else "") + " (%)")
     ax.grid(True, which="major", lw=0.3, color="#dddddd")

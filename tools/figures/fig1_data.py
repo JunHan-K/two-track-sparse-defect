@@ -106,12 +106,12 @@ def step_replay():
 def step_pick():
     """Inference example of the final model (test split by default, --split), chosen for visibility: among small defects (< Q33
     area) that the Global Sight Track misses (max p_L < 0.5) and the precision mode finds (max p >= 0.9), in images
-    with fewer than 10 defect components (an uncluttered input) and no other defect in its 128-px zoom window,
+    with 7-13 defect components and no large defect inside its 128-px zoom window,
     the one with the highest local contrast
     |mean inside - mean of a 2-6 px ring| / std(ring). Rule set on 2026-10-10 after seeing the previous pick
     (largest recovered area: a defect hardly visible in the crop); written to fig1_data/pick.json."""
     q33 = json.load(open(f"{EXP}/metrics_val.json"))["component_size_edges"][0]
-    best = None
+    cands = []
     for r in read_split(f"data/splits/vision/{SPLIT}.csv"):
         fl = Path(f"{EXP}/predictions/{SPLIT}/{r['id']}.npz")
         fp = Path(f"{EXP}/predictions/{SPLIT}_zoom_main_masked_d16_o0.5_t0.02_n32/{r['id']}.npz")
@@ -119,7 +119,7 @@ def step_pick():
             continue
         img, g = load(r)
         lab, n = ndimage.label(g, structure=S8)
-        if n == 0 or n >= 10:
+        if n < 7 or n > 13:  # about ten defects in the image
             continue
         L = np.load(fl)["pmain"].astype(np.float32)
         P = np.load(fp)["pmain"].astype(np.float32)
@@ -130,7 +130,10 @@ def step_pick():
                 continue
             cy_, cx_ = (sl[0].start + sl[0].stop) // 2, (sl[1].start + sl[1].stop) // 2
             win = lab[max(cy_ - 64, 0):cy_ + 64, max(cx_ - 64, 0):cx_ + 64]  # the zoomed window of Fig. 1 (c)
-            if np.setdiff1d(np.unique(win), [0, k]).size:  # another defect in the window would blur the example
+            ids_w = np.setdiff1d(np.unique(win), [0])
+            n_win = ids_w.size
+            areas = ndimage.sum(np.ones_like(lab), lab, ids_w) / g.size
+            if (areas >= q33).any():  # no large defect inside the zoom window (not cluttered)
                 continue
             y0, x0 = max(sl[0].start - 12, 0), max(sl[1].start - 12, 0)
             y1, x1 = sl[0].stop + 12, sl[1].stop + 12
@@ -141,8 +144,10 @@ def step_pick():
                 continue
             gw = gray[y0:y1, x0:x1]
             con = abs(gw[mm].mean() - gw[ring].mean()) / (gw[ring].std() + 1.0)
-            if best is None or (con, r["id"]) > (best[0], best[1]):
-                best = (float(con), r["id"], k, float(L[sl][m].max()), float(P[sl][m].max()))
+            cands.append((float(con), r["id"], k, float(L[sl][m].max()), float(P[sl][m].max()), int(n), int(n_win)))
+    cands.sort(reverse=True)
+    json.dump(cands[:10], open(OUT / "pick_candidates.json", "w"))
+    best = cands[0]
     print("pick:", best)
     json.dump({"id": best[1], "component": best[2], "p_L": best[3], "p": best[4]}, open(OUT / "pick.json", "w"))
 
