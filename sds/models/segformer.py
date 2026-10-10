@@ -6,8 +6,8 @@
                   + heads s1..s4 on the four encoder stages (strides 4..32). They are trained with auxiliary
                   losses (s1, s2 on small defects only, s3, s4 on all defects; tools/train.py) and are NOT
                   executed at inference, so the deployed network is the plain segmenter.
-      fusion="small" (ablation only): the main logit is raised by shallow-stage (s1, s2) evidence through a
-                  gate driven by the deep stages (s3, s4) -- the inference-time fusion that did not help.
+      fusion="small" (final model): the main logit is raised by shallow-stage (s1, s2) evidence through a
+                  gate driven by the deep stages (s3, s4); the stage heads are then part of the inference path.
 
 Only the main head is executed when `return_aux=False` (inference, efficiency measurements).
 """

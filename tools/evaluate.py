@@ -37,7 +37,7 @@ def parse():
     ap = argparse.ArgumentParser()
     ap.add_argument("--exp", required=True, help="experiment output dir")
     ap.add_argument("--ckpt", default="best.pt")
-    ap.add_argument("--heads", nargs="*", default=["main"], help="main and/or training-only stage heads (s1..s4)")
+    ap.add_argument("--heads", nargs="*", default=["main"], help="main and/or stage heads (s1..s4)")
     ap.add_argument("--test", action="store_true", help="also evaluate the official test split (final only!)")
     ap.add_argument("--save-probs", action="store_true", help="save float16 probability maps (original res)")
     ap.add_argument("--criterion", default="f1", choices=["f1", "iou"])

@@ -19,7 +19,7 @@ def test_heads_shapes_and_inference_graph(head, fusion, n_aux):
     m.eval()
     with torch.no_grad():
         inf = m(x, return_aux=False)
-    assert inf["aux"] == {}  # stage heads are training-only (unless fused)
+    assert inf["aux"] == {}  # without fusion the stage heads are training-only
 
 
 def test_stage_heads_do_not_change_the_deployed_output():

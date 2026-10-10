@@ -13,7 +13,7 @@ def predict_batch(model: torch.nn.Module, batch: dict, heads=("main",), amp: boo
                   dtype: torch.dtype = torch.float64) -> list[dict]:
     """Run the model and return per-image probability maps.
 
-    heads: iterable containing "main" and/or training-only stage heads (s1..s4).
+    heads: iterable containing "main" and/or stage heads (s1..s4).
     resolution: "original" -> padding removed + upsampled to the original image size
                 "resized"  -> padding removed, network input resolution
     dtype: of the probabilities. Evaluation keeps float64: a float32 sigmoid is exactly 1.0 above logit ~16.6, so
