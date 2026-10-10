@@ -84,7 +84,7 @@ def net(ax, x, y, s=1.0, c=LOW, label=True, stages=True):
         ax.add_patch(Polygon([(xx, y - h / 2), (xx + 0.11 * s, y - h / 2 + 0.05 * s), (xx + 0.11 * s, y + h / 2 + 0.05 * s),
                               (xx, y + h / 2)], closed=True, fc=NETF, ec=c, lw=0.7, zorder=4))
         if stages:
-            ax.text(xx + 0.055 * s, y - h / 2 - 0.035, f"$s_{i + 1}$", ha="center", va="top", fontsize=6.6, color=c)
+            ax.text(xx + 0.055 * s, y - h / 2 - 0.035, f"$s_{i + 1}$", ha="center", va="top", fontsize=7.4, color=c)
         xx += 0.17 * s
     ax.add_patch(Polygon([(xx, y - 0.22 * s), (xx + 0.30 * s, y - 0.32 * s), (xx + 0.30 * s, y + 0.32 * s), (xx, y + 0.22 * s)],
                          closed=True, fc=NETF, ec=c, lw=0.7, zorder=4))
@@ -145,7 +145,7 @@ def draw(out_dir):
     R = np.load(resolve(DATA) / "replay.npz")
     I = np.load(resolve(DATA) / "infer.npz")
     plt.rcParams.update({"font.size": 7.2})
-    LAB, SMALL, TITLE = 7.9, 7.3, 8.8
+    LAB, SMALL, TITLE = 7.9, 7.4, 8.8  # printed at 0.95: >= 7 pt
     W, H, Y0 = 7.16, 3.72, 0.34  # inches; [Y0, H] shown; (c) is drawn compact and moved up by DC (below)
     DC = 0.14
     fig = plt.figure(figsize=(W, H - Y0))
@@ -360,9 +360,9 @@ def draw(out_dir):
         c=LOW)
     ax.text(ox + cz / 2 - 0.04, yr + 0.01, "global $p_L$, same window", ha="right", va="bottom", fontsize=SMALL,
             color=LOW)
-    mx, my_, mr = ox + cz + 0.36, ctr, 0.10
+    mx, my_, mr = ox + cz + 0.36, ctr, 0.125
     ring(ax, mx, my_, mr, c=INK, lw=0.8)
-    ax.text(mx, my_, "max", ha="center", va="center", fontsize=SMALL - 0.6, color=INK)
+    ax.text(mx, my_, "max", ha="center", va="center", fontsize=SMALL, color=INK)
     seg(ax, [(ox + cz, yt + cz / 2), (mx - mr * 0.75, my_ + mr * 0.66)], c=LOW)
     seg(ax, [(ox + cz, yb + cz / 2), (mx - mr * 0.75, my_ - mr * 0.66)], c=NAT)
     fx_ = mx + mr + 0.24
