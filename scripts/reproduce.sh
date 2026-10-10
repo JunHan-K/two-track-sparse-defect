@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Reproduce the paper: every model, 3 seeds, validation-selected thresholds, test split.
 #   bash scripts/reproduce.sh vision ours        # our method only (train, mine, refine, evaluate)
-#   bash scripts/reproduce.sh vision baselines   # Table II competitors
-#   bash scripts/reproduce.sh vision ablation    # Table III (validation split)
+#   bash scripts/reproduce.sh vision baselines   # Table I competitors
+#   bash scripts/reproduce.sh vision ablation    # Table III (test split)
 #   bash scripts/reproduce.sh mvtec_ad ours|baselines|ablation
 # Each step is one command; run them on as many GPUs as you have (they are independent per seed).
 set -euo pipefail
@@ -57,20 +57,31 @@ case $WHAT in
         for tol in 0 3; do run python tools/external/supersimplenet_seg.py --dataset mvtec_ds --seed $s --eval-only --test --tol $tol; done
       done
     fi ;;
-  ablation)  # validation split, precision mode for every row (as in Table III)
-    for c in configs/$DS/ablation/*.yaml; do
-      id=$(python -c "import yaml,sys;print(yaml.safe_load(open(sys.argv[1]))['experiment_id'])" "$c")
+  ablation)  # Table III: precision mode for every row, validation-selected thresholds, test split
+    # (1) training components (everything except refine_*); (2) refinements of the unfused step-1 model
+    #     (ablation/stage_heads_size_aware.yaml) with replay mined from it; run "ours" and "baselines" first
+    abl() {  # config, init checkpoint id, replay id
+      local c=$1 id; id=$(python -c "import yaml,sys;print(yaml.safe_load(open(sys.argv[1]))['experiment_id'])" "$c")
       for s in $SEEDS; do
-        x=$(sfx $s); opts="seed=$s"
-        if grep -q "init_checkpoint" "$c"; then opts="$opts refine.init_checkpoint=outputs/${P}_ours_stage1$x/best.pt"; fi
-        if grep -q "replay_file" "$c"; then opts="$opts refine.replay_file=data/replay/$DS/${P}_ours_stage1$x.json"; fi
+        local x=$(sfx $s) opts="seed=$s"
+        [ -n "${2:-}" ] && opts="$opts refine.init_checkpoint=outputs/$2$x/best.pt refine.replay_file=data/replay/$DS/$3$x.json"
         run python tools/train.py --config "$c" --opts $opts
-        for tol in 0 3; do run python tools/evaluate_zoom.py --exp outputs/$id$x --mode precision --tol $tol; done
+        for tol in 0 3; do run python tools/evaluate_zoom.py --exp outputs/$id$x --mode precision --test --tol $tol; done
       done
-    done
-    for s in $SEEDS; do  # rows that reuse runs of the other groups (run "ours" and "baselines" first)
+    }
+    for c in configs/$DS/ablation/*.yaml; do case $(basename "$c") in refine_*) ;; *) abl "$c" ;; esac; done
+    base=${P}_abl_stage_heads_size_aware  # VISION; MVTec AD has no unfused step 1, its controls refine ours_stage1
+    [ -f configs/$DS/ablation/stage_heads_size_aware.yaml ] || base=${P}_ours_stage1
+    if ls configs/$DS/ablation/refine_*.yaml >/dev/null 2>&1; then
+      for s in $SEEDS; do
+        f=data/replay/$DS/$base$(sfx $s).json
+        [ -f "$f" ] || run python tools/mine_native_fp.py --exp outputs/$base$(sfx $s) --out "$f"
+      done
+      for c in configs/$DS/ablation/refine_*.yaml; do abl "$c" $base $base; done
+    fi
+    for s in $SEEDS; do  # rows that reuse runs of the other groups
       for id in ${P}_segformer_b0 ${P}_ours_stage1 ${P}_ours; do
-        for tol in 0 3; do run python tools/evaluate_zoom.py --exp outputs/$id$(sfx $s) --mode precision --tol $tol; done
+        for tol in 0 3; do run python tools/evaluate_zoom.py --exp outputs/$id$(sfx $s) --mode precision --test --tol $tol; done
       done
     done ;;
   *) echo "unknown: $WHAT"; exit 1 ;;

@@ -5,23 +5,26 @@ Code for the paper submitted to IEEE ICCE 2027 (release `v1.0-icce2027` = the su
 Defects on consumer-electronics parts often cover a few pixels of a multi-megapixel image. A lightweight
 segmenter that works on the downscaled image loses them; the same segmenter applied to native-resolution tiles
 finds them, together with many false alarms that the wider context would have ruled out. **Twin-SparSight** trains
-**one 3.8 M-parameter SegFormer (MiT-B0)** to use both views and runs it as a two-track inspector.
+**one 3.8M-parameter SegFormer (MiT-B0)** to use both views and runs it as a two-track inspector.
 
 ![overview](docs/overview.png)
 
 **Twin-View SparSight Training** (`configs/<dataset>/ours_stage1.yaml`)
 1. *Two views.* Every second batch of downscaled whole images is followed by a batch of 384x384 crops taken at
    the original resolution (centred on a defect with probability 0.5).
-2. *Size-aware supervision* (whole-image batches). Defect pixels of small components get up to 5x more weight in
-   the BCE term of the main head. Stage heads on the four encoder stages are trained at the same time (the shallow
-   two on small defects only) and are **discarded at inference**: the deployed network is the plain MiT-B0
-   segmenter.
+2. *Size-aware stage supervision* (whole-image batches). Defect pixels of small components get up to 5x more weight
+   in the BCE term of the main output. Stage heads on the four encoder stages are trained at the same time (the
+   shallow two on small defects only).
+3. *Gated stage-head fusion.* A small gate driven by the deep stages (s3, s4) adds the shallow heads' small-defect
+   evidence (s1, s2) to the main logit; it starts as the identity and can only raise the score. The fused network is
+   used in both inference tracks.
 
 **Sparse Defect Replay** (`configs/<dataset>/ours.yaml`): the trained model segments its training images at native
 resolution and its false positives are counted per image; a 20-epoch refinement then replays native crops of small
-defects together with random background crops, allocated to images in proportion to their false positives. Replaying
-the false-positive locations themselves (`ablation/refine_own_false_positives.yaml`) also suppresses look-alike small
-defects and does not help.
+defects together with random background crops, allocated to images in proportion to their false positives. Fusion
+alone finds more small defects but also adds false alarms on look-alike background; replay recovers the precision
+(VISION: small-defect AP<sup>3</sup> 23.4 -> 28.6, precision 87.9 -> 89.4). Replaying the false-positive locations
+themselves (`ablation/refine_own_false_positives.yaml`) also suppresses look-alike small defects and does not help.
 
 
 **Twin-Track SparSight Inference** (`tools/evaluate_zoom.py`): a *Global Sight Track* (L) segments the downscaled
@@ -40,13 +43,13 @@ competitors, standard deviations, ablation) are produced by `tools/paper_tables.
 
 | Method | Params | GFLOPs | Latency | AP | AP<sub>s</sub> | AP<sub>s</sub><sup>3</sup> | AUPRO<sub>s</sub> |
 |---|---|---|---|---|---|---|---|
-| SegFormer-B0 | 3.7M | 87 | 62 ms | 86.3 | 1.5 | 3.1 | 83.0 |
+| SegFormer-B0 | 3.7M | 87 | 57 ms | 86.3 | 1.5 | 3.1 | 83.0 |
 | SegFormer-B0, 1536<sup>2</sup> input | 3.7M | 290 | 123 ms | 87.3 | 3.8 | 10.8 | 84.8 |
-| U-Net (R34) | 24.4M | 250 | 55 ms | 81.1 | 1.2 | 4.2 | 54.4 |
-| SegFormer-B5 | 84.6M | 1120 | 98 ms | **89.2** | 3.9 | 10.0 | 86.0 |
+| U-Net (R34) | 24.4M | 250 | 52 ms | 81.1 | 1.2 | 4.2 | 54.4 |
+| SegFormer-B5 | 84.6M | 1120 | 102 ms | **89.2** | 3.9 | 10.0 | 86.0 |
 | Mask2Former (Swin-T) | 47.4M | 540 | 111 ms | 88.3 | 2.7 | 5.1 | 81.7 |
-| **Twin-SparSight, precision mode** | 3.8M | 125 | 121 ms | 88.9 | **6.5** | 22.3 | 89.9 |
-| **Twin-SparSight, recall mode** | 3.8M | 308 | 308 ms | 87.9 | 6.1 | **23.2** | **91.6** |
+| **Twin-SparSight, precision mode** | 3.8M | 125 | 123 ms | 88.9 | **9.0** | 28.6 | 90.8 |
+| **Twin-SparSight, recall mode** | 3.8M | 310 | 330 ms | 88.3 | 8.8 | **30.8** | **92.8** |
 
 <p align="center"><img src="docs/accuracy_vs_compute.png" width="520" alt="small-defect AP vs compute on VISION"></p>
 
@@ -58,7 +61,7 @@ competitors, standard deviations, ablation) are produced by `tools/paper_tables.
 | SegFormer-B5 | 84.6M | 92.5 | 12.9 | 25.3 | **88.0** |
 | HRNet-W18-small | 3.9M | 90.7 | 18.7 | 33.9 | 86.6 |
 | SuperSimpleNet | 33.7M | 88.6 | 12.7 | 24.3 | 83.7 |
-| **Twin-SparSight, precision mode** | 3.8M | **93.0** | **19.2** | **40.0** | 87.8 |
+| **Twin-SparSight, precision mode** | 3.8M | **93.0** | **22.9** | **46.0** | **88.0** |
 
 Latency: one A100, batch 1, end to end from the decoded image to the full-resolution map (resizing included), mean
 over 200 test images; GFLOPs count a multiply-add as 2. The precision mode costs 1.4x the FLOPs of SegFormer-B0
@@ -109,7 +112,7 @@ in the config paths (experiment ids start with `mvtec_`).
 
 ```bash
 bash scripts/reproduce.sh vision ours           # and: mvtec_ad ours
-bash scripts/reproduce.sh vision baselines      # Table II competitors (MVTec AD: Table I)
+bash scripts/reproduce.sh vision baselines      # Table I competitors (MVTec AD: Table II)
 bash scripts/reproduce.sh vision ablation       # Table III
 python tools/measure_modes.py                   # end-to-end latency of every method on one GPU
 python tools/paper_tables.py --split test       # tables -> outputs/paper/tables/
@@ -120,10 +123,10 @@ python tools/analysis/bootstrap_small.py        # paired bootstrap of the small-
 
 | Config | Paper |
 |---|---|
-| `configs/<ds>/ours_stage1.yaml`, `ours.yaml` | ours (before / after Sparse Defect Replay) |
+| `configs/<ds>/ours_stage1.yaml`, `ours.yaml` | ours (with stage-head fusion; before / after Sparse Defect Replay) |
 | `configs/<ds>/baselines/*.yaml` | SegFormer-B0/B5, B0 at 1536^2, U-Net, DeepLabV3+, HRNet-W18-small, BiSeNetV2, Mask2Former, DNANet, MSHNet |
 | `tools/external/magnet_seg.py`, `supersimplenet_seg.py` | MagNet (VISION), SuperSimpleNet (MVTec AD), with the authors' code (SuperSimpleNet runs in the environment of its repository: PyTorch Lightning, anomalib) |
-| `configs/<ds>/ablation/*.yaml` | ablation (two views, stage heads, size-aware supervision, inference-time fusion, refinement controls and replay variants, update-matched B0) |
+| `configs/<ds>/ablation/*.yaml` | ablation (two views, stage heads, size-aware supervision, stage-head fusion; refinement controls and replay variants on the unfused model, `refine_unfused.yaml` = Sparse Defect Replay without fusion; update-matched B0) |
 | `configs/vision/diagnostics/*.yaml` | small-target models with their authors' recipes and on native crops |
 | `tools/external/irstd_sanity.py` | DNANet / MSHNet reproduced on their own benchmarks (NUAA-SIRST, IRSTD-1k) |
 

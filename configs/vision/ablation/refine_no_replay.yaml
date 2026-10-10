@@ -38,5 +38,5 @@ train:
     area_px: auto
     margin: 3
   zoom: {crop: 384, every: 2, batch: 8, p_defect: 0.5}
-refine: {enabled: true, init_checkpoint: outputs/vision_ours_stage1/best.pt, replay_type: none, full_per_replay: 3, replay_batch_size: 8,
+refine: {enabled: true, init_checkpoint: outputs/vision_abl_stage_heads_size_aware/best.pt, replay_type: none, full_per_replay: 3, replay_batch_size: 8,
   match_budget: true}

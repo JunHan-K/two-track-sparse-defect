@@ -1,4 +1,4 @@
-# Ablation: step 1 + inference-time fusion of the shallow stages (did not help).
+# Ablation (Table III(a), last row): step 1 with the gated stage-head fusion, before replay (= ours_stage1.yaml).
 experiment_id: vision_abl_inference_fusion
 seed: 42
 output_root: outputs
