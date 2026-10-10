@@ -1,5 +1,5 @@
 """Synthetic end-to-end run of our method (CPU, random-init encoder, a few minutes):
-step 1 (two views, size-aware, stage heads) -> mine native false positives -> refinement with confusion replay
+step 1 (two views, size-aware, stage heads) -> mine native false positives -> refinement with Sparse Defect Replay
 -> precision / recall evaluation, plus the guards (run-dir reuse, replay/checkpoint mismatch).
 
 Skipped unless SDS_E2E=1:  SDS_E2E=1 python -m pytest tests/test_e2e.py -q
@@ -85,9 +85,12 @@ def test_end_to_end(tmp_path):
     _run("tools/mine_native_fp.py", "--exp", str(st1), "--out", str(rep), "--min-area", "1")
     r = json.load(open(rep))
     assert len(r["pos"]) > 0 and r["provenance"]["source_checkpoint_sha"]
-    if len(r["bg"]["native_fp"]) < 2:  # an untrained model may have no clean false positives: add two points
-        r["bg"]["native_fp"] += [{"id": e["id"], "cy": 2.0, "cx": 2.0} for e in r["pos"][:2]]
-        json.dump(r, open(rep, "w"))
+    # an untrained model may have no clean false positives: add two points to the false positives and to the random
+    # background crops allocated by them (the final replay uses the random ones)
+    for key in ("native_fp", "random"):
+        if len(r["bg"][key]) < 2:
+            r["bg"][key] += [{"id": e["id"], "cy": 2.0, "cx": 2.0} for e in r["pos"][:2]]
+    json.dump(r, open(rep, "w"))
     r2 = _config(tmp_path / "r2.yaml", "configs/vision/ours.yaml",
                  {**common, "data.train_split": [sp["core"], sp["mining"]], "refine.init_checkpoint": str(st1 / "best.pt"),
                   "refine.replay_file": str(rep), "refine.replay_batch_size": 2})
