@@ -18,9 +18,10 @@ import numpy as np
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
+from tools.final_model import VISION as FINAL_VISION  # noqa: E402
 from sds.metrics import step_ap  # noqa: E402
 
-OURS = ("Ours (precision)", "vision_ours", "zoom_main_masked_d16_o0.5_t0.02_n32")
+OURS = ("Ours (precision)", FINAL_VISION, "zoom_main_masked_d16_o0.5_t0.02_n32")
 OTHERS = [  # every competitor of Table II, plus our own variants (precision mode)
     ("SegFormer-B0", "vision_segformer_b0", "main"),
     ("SegFormer-B0 + tiles", "vision_segformer_b0", "zoom_tile"),
@@ -35,9 +36,9 @@ OTHERS = [  # every competitor of Table II, plus our own variants (precision mod
     ("MagNet (authors' loss)", "vision_magnet_authors_loss", "main"),
     ("DNANet", "vision_dnanet", "main"),
     ("MSHNet", "vision_mshnet", "main"),
-    ("Ours w/o replay", "vision_ours_stage1", "zoom_main_masked_d16_o0.5_t0.02_n32"),
+    ("Ours w/o replay", "vision_abl_stage_heads_size_aware", "zoom_main_masked_d16_o0.5_t0.02_n32"),
     ("Ours, refinement w/o replay", "vision_abl_refine_no_replay", "zoom_main_masked_d16_o0.5_t0.02_n32"),
-    ("Ours, random-background replay", "vision_abl_refine_random_background", "zoom_main_masked_d16_o0.5_t0.02_n32"),
+    ("Ours, replay of own false positives", "vision_abl_refine_own_false_positives", "zoom_main_masked_d16_o0.5_t0.02_n32"),
 ]
 
 

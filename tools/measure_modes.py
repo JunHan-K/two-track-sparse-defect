@@ -26,6 +26,7 @@ from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+from tools.final_model import VISION as FINAL_VISION  # noqa: E402
 import sds.data.dataset as DS  # noqa: E402
 from sds.data import SegDataset  # noqa: E402
 from sds.engine import predict_batch, to_device  # noqa: E402
@@ -127,7 +128,7 @@ def main():
         print(exp, f"{mu:.1f} ms", flush=True)
         del m
     for exp, modes in (("vision_segformer_b0", {"tiles": R}),
-                       ("vision_ours", {"precision": P, "recall": R})):
+                       (FINAL_VISION, {"precision": P, "recall": R})):
         cfg, m = load_model(exp, dev)
         check_prep(cfg)
         size = cfg["data"]["input_size"]

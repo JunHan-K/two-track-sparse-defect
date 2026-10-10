@@ -19,9 +19,10 @@ import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from tools.paper_tables import ROOT, agg, native_gflops, run_metrics  # noqa: E402
+from tools.final_model import VISION as FINAL_VISION  # noqa: E402
+from tools.paper_tables import ROOT, agg, gflops  # noqa: E402
 
-plt.rcParams.update({"font.family": "STIXGeneral", "mathtext.fontset": "stix", "font.size": 7.5,
+plt.rcParams.update({"font.family": "STIXGeneral", "mathtext.fontset": "stix", "font.size": 7.6,
                      "pdf.fonttype": 42, "ps.fonttype": 42})
 BASE, OURS = "#7f7f7f", "#c0392b"
 # (label, exp, mode, colour, marker)
@@ -30,7 +31,7 @@ POINTS = [
     ("B0 + tiles", "vision_segformer_b0", "R", BASE, "s"),
     ("B0, $1536^2$", "vision_segformer_b0_1536", "full", BASE, "^"),
     ("BiSeNetV2", "vision_bisenetv2", "full", BASE, "v"),
-    ("HRNet-W18-s", "vision_hrnet_w18s", "full", BASE, "<"),
+    ("HRNet", "vision_hrnet_w18s", "full", BASE, "<"),
     ("U-Net", "vision_unet", "full", BASE, "D"),
     ("DeepLabV3+", "vision_deeplabv3p", "full", BASE, ">"),
     ("DNANet", "vision_dnanet", "full", BASE, "p"),
@@ -38,36 +39,17 @@ POINTS = [
     ("MagNet", "vision_magnet", "full", BASE, "P"),
     ("SegFormer-B5", "vision_segformer_b5", "full", BASE, "8"),
     ("Mask2Former", "vision_mask2former", "full", BASE, "d"),
-    ("Twin-SparSight (precision)", "vision_ours", "P", OURS, "*"),
-    ("Twin-SparSight (recall)", "vision_ours", "R", OURS, "X"),
+    ("Ours (precision)", FINAL_VISION, "P", OURS, "*"),
+    ("Ours (recall)", FINAL_VISION, "R", OURS, "X"),
 ]
 
 # label offsets (points) so that neighbouring labels do not overlap
-OFFSET = {"SegFormer-B0": (2, -10, "center"), "HRNet-W18-s": (-5, 0, "right"), "BiSeNetV2": (4, 5, "left"),
-          "ours w/o replay, precision": (5, 5, "left"), "Twin-SparSight (precision)": (5, 4, "left"),
-          "B0 + tiles": (0, -8, "center"), "Mask2Former": (5, 6, "left"), "MSHNet": (-5, 0, "right"),
-          "DeepLabV3+": (5, 0, "left"), "DNANet": (5, 0, "left"), "U-Net": (5, 0, "left")}
-
-
-def gflops(exp, mode, split):
-    if exp.startswith("vision_magnet"):  # coarse-to-fine loop: measured by tools/measure_modes.py (patches x FLOPs)
-        for f in sorted((ROOT / "outputs").glob("latency_vision*.json"), reverse=True):
-            g = json.load(open(f))["models"].get(exp, {}).get("gflops")
-            if g:
-                return g
-        return None
-    for s in ("", "_s1", "_s2"):
-        f = ROOT / "outputs" / (exp + s) / "efficiency.json"
-        if f.exists():
-            e = json.load(open(f))
-            g = e["flops_g"]
-            if mode != "full":
-                m = run_metrics(exp + s, mode, 0, split)
-                if not m or "mean_crops_per_image" not in m:
-                    return None
-                g = native_gflops(e, m["mean_crops_per_image"])
-            return g
-    return None
+OFFSET = {"SegFormer-B0": (-4, -10, "right"), "HRNet": (-5, 1, "right"), "BiSeNetV2": (4, 4, "left"),
+          "Ours (precision)": (-7, 0, "right"), "Ours (recall)": (6, 0, "left"),
+          "B0 + tiles": (22, -16, "left"), "B0, $1536^2$": (5, 4, "left"), "Mask2Former": (5, -3, "left"),
+          "MSHNet": (-5, -1, "right"), "DeepLabV3+": (0, -8, "center"), "DNANet": (5, 0, "left"), "U-Net": (-5, 0, "right"),
+          "SegFormer-B5": (5, 3, "left"), "MagNet": (0, -9, "center")}
+LEADER = {"B0 + tiles"}
 
 
 def main():
@@ -77,7 +59,7 @@ def main():
     ap.add_argument("--split", default="val")
     ap.add_argument("--out", default="outputs/paper/figures")
     a = ap.parse_args()
-    fig, ax = plt.subplots(figsize=(3.45, 2.3))
+    fig, ax = plt.subplots(figsize=(4.10, 1.56))  # printed beside the track-disagreement plot (no scaling)
     for label, exp, mode, col, mk in POINTS:
         v = agg(exp, mode, a.metric, a.tol, a.split)
         g = gflops(exp, mode, a.split)
@@ -89,13 +71,17 @@ def main():
         ax.errorbar(g, mu, yerr=sd, fmt=mk, ms=7 if mk == "*" else 4.5, color=col, mfc=col if full else "white",
                     mec=col, ecolor=col, elinewidth=0.6, capsize=1.5, zorder=3)
         dx, dy, ha = OFFSET.get(label, (4, 3, "left"))
-        ax.annotate(label, (g, mu), xytext=(dx, dy), textcoords="offset points", fontsize=6, color=col, ha=ha,
-                    va="center")
+        lead = label in LEADER  # crowded spot: label placed away with a straight leader line
+        ax.annotate(label, (g, mu), xytext=(dx, dy), textcoords="offset points", fontsize=7.0, color=col, ha=ha,
+                    va="center", arrowprops=dict(arrowstyle="-", color=col, lw=0.5, shrinkA=0, shrinkB=3) if lead else None)
         print(f"{label:26s} GFLOPs={g:7.1f} y={mu:5.1f}+-{sd:.1f} (n={len(v)})")
     ax.set_xscale("log")
+    ax.set_xlim(left=24)  # room for the labels left of the lightest models
+    ax.set_ylim(bottom=-7.5, top=37)
     ax.set_xlabel("GFLOPs per image (log)")
     ax.set_ylabel("small-defect AP" + (f"$^{{{a.tol}}}$" if a.tol else "") + " (%)")
     ax.grid(True, which="major", lw=0.3, color="#dddddd")
+    ax.set_title("(c) accuracy vs. compute", fontsize=7.4, pad=2)
     for sp in ("top", "right"):
         ax.spines[sp].set_visible(False)
     fig.tight_layout(pad=0.3)

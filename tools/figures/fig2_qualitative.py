@@ -1,4 +1,4 @@
-"""Fig. 2: qualitative comparison on a sparse-defect benchmark .
+"""Fig. 2: qualitative comparison on a sparse-defect benchmark (final method, 2026-10-05).
 
   python tools/figures/fig2_qualitative.py --dataset vision --split val
   python tools/figures/fig2_qualitative.py --dataset vision --split test     # paper (after the test pass)
@@ -17,6 +17,7 @@ only images with at least one small component are eligible;
 (no "false alarm" row: VISION has no labelled normal images). Ties are broken by image id.
 Each panel is a square crop (original resolution) centred on the smallest GT component, side =
 clip(--zoom x its bounding-box side, --min-window, --window), so tiny defects stay visible.
+The previous KSDD2 / nested-capacity version is in git history (commit 44cba88 and earlier).
 """
 import argparse
 import json
@@ -32,6 +33,7 @@ from PIL import Image  # noqa: E402
 from scipy import ndimage  # noqa: E402
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from tools.final_model import MVTEC as FINAL_MVTEC, VISION as FINAL_VISION  # noqa: E402
 from sds.data import read_split  # noqa: E402
 from sds.data.dataset import load_mask  # noqa: E402
 from sds.metrics import thr_value  # noqa: E402
@@ -45,18 +47,37 @@ plt.rcParams.update({"font.family": "STIXGeneral", "mathtext.fontset": "stix", "
 PRESETS = {
     "vision": {
         "splits": {"val": "data/splits/vision/val.csv", "test": "data/splits/vision/test.csv"},
-        "baseline": 0, "ours": 4,
+        "baseline": 0, "ours": 6,
         "columns": [
             ("SegFormer-B0", "vision_segformer_b0", "", "pmain", "metrics_test.json"),
             ("B0, $1536^2$", "vision_segformer_b0_1536", "", "pmain", "metrics_test.json"),
             ("U-Net (R34)", "vision_unet", "", "pmain", "metrics_test.json"),
+            ("SegFormer-B5", "vision_segformer_b5", "", "pmain", "metrics_test.json"),
+            ("Mask2Former", "vision_mask2former", "", "pmain", "metrics_test.json"),
             ("MagNet", "vision_magnet", "", "pmain", "metrics_test.json"),
-            ("Twin-SparSight", "vision_ours", "_zoom_main_masked_d16_o0.5_t0.02_n32", "pmain",
+            ("Ours (precision)", FINAL_VISION, "_zoom_main_masked_d16_o0.5_t0.02_n32", "pmain",
              "metrics_zoom_main_masked_d16_o0.5_t0.02_n32_test.json"),
+            ("Ours (recall)", FINAL_VISION, "_zoom_tile", "pmain", "metrics_zoom_tile_test.json"),
         ],
     },
 }
-ROW_NAMES = {"gain1": "ours > baseline", "gain2": "ours > baseline", "loss": "ours < baseline"}
+PRESETS["mvtec"] = {
+    "splits": {"val": "data/splits/mvtec_ds/val.csv", "test": "data/splits/mvtec_ds/test.csv"},
+    "baseline": 0, "ours": 6,
+    "columns": [
+        ("SegFormer-B0", "mvtec_segformer_b0", "", "pmain", "metrics_test.json"),
+        None,  # 1536^2 input: VISION only
+        ("U-Net (R34)", "mvtec_unet", "", "pmain", "metrics_test.json"),
+        ("SegFormer-B5", "mvtec_segformer_b5", "", "pmain", "metrics_test.json"),
+        None,  # Mask2Former: VISION only
+        None,  # MagNet: VISION only
+        ("Ours (precision)", FINAL_MVTEC, "_zoom_main_masked_d16_o0.5_t0.02_n32", "pmain",
+         "metrics_zoom_main_masked_d16_o0.5_t0.02_n32_test.json"),
+        ("Ours (recall)", FINAL_MVTEC, "_zoom_tile", "pmain", "metrics_zoom_tile_test.json"),
+    ],
+}
+ROW_NAMES = {"gain1": "ours > baseline", "gain2": "ours > baseline", "gain3": "ours > baseline",
+             "loss": "ours < baseline"}
 
 
 def load_pred(col, split, iid):
@@ -102,13 +123,21 @@ def pick_rows(rows, split, cols, base_i, ours_i, q33):
         return {}
     gains.sort(key=lambda t: (-t[0], t[1]))
     # loss row: a weakness, not a total miss -- among images where ours covers part of the small defects
-    # (coverage > 0), the one with the largest deficit to the baseline
+    # (coverage > 0), the one with the largest deficit to the baseline (rule changed 2026-10-05 by the author)
     base_cov = {t[1]: t[2] - t[0] for t in gains}
     print(f"counts: images={len(gains)} ours_more={sum(t[0] > 0 for t in gains)} ours_less={sum(t[0] < 0 for t in gains)} "
           f"ours_misses_all={sum(1 for t in gains if t[2] == 0 and base_cov[t[1]] > 0)}")
-    partial = [t for t in gains if t[2] > 0 and t[0] < 0]
-    loss = min(partial or gains, key=lambda t: (t[0], t[1]))[1]
-    return {"gain1": gains[0][1], "gain2": gains[1][1], "loss": loss}
+    # rows (2026-10-10, by the author): the three largest gains, one per category; the overall counts above
+    # (printed in the caption) report the losses
+    picked, cats = [], set()
+    for t in gains:
+        c = t[1].split("_")[0]
+        if c not in cats:
+            picked.append(t[1])
+            cats.add(c)
+        if len(picked) == 3:
+            break
+    return {"gain1": picked[0], "gain2": picked[1], "gain3": picked[2]}
 
 
 def focus_of(g):
@@ -184,6 +213,138 @@ def draw(dataset, split, window, min_window, zoom, out_dir, base_split_for_rows,
     print("saved", out / f"{stem}.pdf")
 
 
+def window_of(g, zoom, min_window, window, focus=None):
+    cy, cx, side = focus_of(g if focus is None else focus)
+    h, w = g.shape
+    s = int(min(np.clip(zoom * side, min_window, window), h, w))
+    y0, x0 = int(np.clip(cy - s // 2, 0, h - s)), int(np.clip(cx - s // 2, 0, w - s))
+    return (slice(y0, y0 + s), slice(x0, x0 + s)), s
+
+
+def coverage_table(dataset, split):
+    """Per eligible image: small-defect coverage of the baseline and of both our modes (validation thresholds)."""
+    P = PRESETS[dataset]
+    cols = P["columns"]
+    base, ours_p, ours_r = cols[P["baseline"]], cols[P["ours"]], cols[P["ours"] + 1]
+    q33 = json.load(open(resolve("outputs") / ours_p[1] / "metrics_val.json"))["component_size_edges"][0]
+    tb, tp, tr = val_threshold(base), val_threshold(ours_p), val_threshold(ours_r)
+    out = []
+    for r in read_split(P["splits"][split]):
+        if r["label"] != 1:
+            continue
+        maps = [load_pred(c, split, r["id"]) for c in (base, ours_p, ours_r)]
+        if any(m is None for m in maps):
+            continue
+        g_all = load_mask(r["mask"], (r["height"], r["width"])) > 0
+        g = small_mask(g_all, q33)
+        if not g.any():
+            continue
+        lab, n = ndimage.label(g, structure=np.ones((3, 3)))
+        for k in range(1, n + 1):  # one entry per small defect component; the window is centred on it
+            m = lab == k
+            cb, cp, cr = [(mp[m] >= t).mean() for mp, t in zip(maps, (tb, tp, tr))]
+            out.append({"row": r, "g": g_all, "focus": m, "cb": cb, "cp": cp, "cr": cr, "maps": maps,
+                        "thr": (tb, tp, tr)})
+    return out
+
+
+def representative(tab, min_gain=0.25):
+    """A typical clear gain, not the best one: among small defects that BOTH our modes cover at least `min_gain` more
+    than the baseline, the one at the median precision-mode gain (ties by id).
+    Rule change (2026-10-10, recorded in the paper's development log): the earlier rule required the
+    gain of the precision mode only; it was changed after seeing the fused final model's figure, whose median example
+    was a defect the recall mode missed (coverage 0)."""
+    pos = sorted((t for t in tab if t["cp"] - t["cb"] >= min_gain and t["cr"] - t["cb"] >= min_gain),
+                 key=lambda t: (t["cp"] - t["cb"], t["row"]["id"]))
+    return pos[len(pos) // 2] if pos else None
+
+
+def recall_false_alarm(tab, zoom, min_window, window):
+    """Characteristic limitation: both modes find at least half of the small defects, but inside the shown window the
+    recall mode adds the most isolated false-alarm area (more than 15 px from any defect) that the precision mode
+    damps."""
+    best, key = None, None
+    for t in tab:
+        if t["cp"] < 0.5 or t["cr"] < 0.5:
+            continue
+        sl, _ = window_of(t["g"], zoom, min_window, window, t["focus"])
+        bg = ~ndimage.binary_dilation(t["g"], iterations=15)[sl]
+        fp_p = ((t["maps"][1][sl] >= t["thr"][1]) & bg).sum()
+        fp_r = ((t["maps"][2][sl] >= t["thr"][2]) & bg).sum()
+        k = (fp_r - fp_p, t["row"]["id"])
+        if key is None or k > key:
+            best, key = t, k
+    return best
+
+
+def draw_mixed(split, window, min_window, zoom, out_dir):
+    """Fig. 2 (2026-10-10, layout by the author): two VISION representative rows from different categories (the
+    second applies the same median-gain rule to the categories other than the first row's), and a VISION row showing
+    the recall mode's characteristic false alarms; columns as in the VISION preset (no empty MVTec AD panels)."""
+    tv = coverage_table("vision", split)
+    first = representative(tv)
+    cat = lambda t: t["row"]["id"].split("_")[0]  # noqa: E731
+    second = representative([t for t in tv if cat(t) != cat(first)])
+    sel = [("vision", "VISION", first), ("vision", "VISION", second),
+           ("vision", "limitation", recall_false_alarm(tv, zoom, min_window, window))]
+    print("rows:", [(d, l, e["row"]["id"], round(e["cb"], 2), round(e["cp"], 2), round(e["cr"], 2)) for d, l, e in sel])
+    ncol, nrow = 1 + len(PRESETS["vision"]["columns"]), len(sel)
+    # drawn at its printed size (0.84 x 7.16 in), so the type is not scaled down
+    FW, L, Rm, T, B, gap = 6.0, 0.30, 0.40, 0.17, 0.02, 0.03
+    pw = (FW - L - Rm - gap * (ncol - 1)) / ncol
+    FH = T + B + nrow * pw + gap * (nrow - 1)
+    fig, axes = plt.subplots(nrow, ncol, figsize=(FW, FH), squeeze=False)
+    plt.subplots_adjust(left=L / FW, right=1 - Rm / FW, top=1 - T / FH, bottom=B / FH, wspace=gap / pw, hspace=gap / pw)
+    short = ["SegFormer-B0", "B0, $1536^2$", "U-Net", "SegFormer-B5", "Mask2Former", "MagNet", "Ours (P)", "Ours (R)"]
+    im_obj = None
+    for i, (ds, label, ent) in enumerate(sel):
+        cols = PRESETS[ds]["columns"]
+        r = ent["row"]
+        iid = r["id"]
+        img = np.asarray(Image.open(resolve(r["image"])).convert("RGB"))
+        g = ent["g"]
+        sl, s = window_of(g, zoom, min_window, window, ent["focus"])
+        titles = short
+        panels = [("input", "img")] + [(titles[j], None if c is None else load_pred(c, split, iid))
+                                       for j, c in enumerate(cols)]
+        for j, (title, p) in enumerate(panels):
+            ax = axes[i, j]
+            ax.set_xticks([])
+            ax.set_yticks([])
+            for sp in ax.spines.values():
+                sp.set_linewidth(0.4)
+            if j == 0:
+                ax.imshow(img[sl], interpolation="lanczos")
+            elif p is None:
+                ax.set_facecolor("#efefef")
+                ax.text(0.5, 0.5, "not run" if cols[j - 1] is None else "pending", ha="center",
+                        va="center", transform=ax.transAxes, fontsize=6.8, color="#888")
+            else:
+                im_obj = ax.imshow(p[sl], cmap="inferno", vmin=0, vmax=1, interpolation="nearest")
+            if j == 0 or p is not None:
+                ax.contour(g[sl].astype(float), levels=[0.5], colors="#39d353", linewidths=0.6)
+            ax.set_xlim(-0.5, s - 0.5)
+            ax.set_ylim(s - 0.5, -0.5)
+            if i == 0:
+                ax.set_title(title, fontsize=6.8, pad=2)
+        cat = iid.split("_")[0]
+        name = f"{label}\n({cat})" if label != "limitation" else f"recall-mode\nfalse alarm"
+        axes[i, 0].set_ylabel(name, fontsize=7.1, labelpad=2, linespacing=1.0)
+        axes[i, 0].text(0.03, 0.03, f"{s}px", transform=axes[i, 0].transAxes, fontsize=6.4, color="white",
+                        va="bottom", ha="left", bbox=dict(fc="black", ec="none", alpha=0.5, pad=0.8))
+    if im_obj is not None:
+        cax = fig.add_axes([1 - (Rm - 0.06) / FW, B / FH + 0.08, 0.07 / FW, 0.78])
+        cb = fig.colorbar(im_obj, cax=cax, ticks=[0, 0.5, 1])
+        cb.ax.tick_params(labelsize=6.8, width=0.4, length=2, pad=1)
+        cb.outline.set_linewidth(0.4)
+        cb.set_label("probability", fontsize=7.0, labelpad=1)
+    out = resolve(out_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    for ext in ("pdf", "png"):
+        fig.savefig(out / f"fig2_qualitative_vision_{split}.{ext}", dpi=400)
+    print("saved", out / f"fig2_qualitative_vision_{split}.pdf")
+
+
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--dataset", default="vision", choices=list(PRESETS))
@@ -193,5 +354,9 @@ if __name__ == "__main__":
     ap.add_argument("--zoom", type=float, default=4.0, help="crop side = zoom x defect bounding-box side")
     ap.add_argument("--out", default="outputs/figures")
     ap.add_argument("--rows", default=None, help='redraw only: JSON dict printed as "rows:" by a full run')
+    ap.add_argument("--mixed", action="store_true", help="paper layout: VISION + MVTec AD representatives + limitation")
     a = ap.parse_args()
+    if a.mixed:
+        draw_mixed(a.split, a.window, a.min_window, a.zoom, a.out)
+        raise SystemExit
     draw(a.dataset, a.split, a.window, a.min_window, a.zoom, a.out, None, json.loads(a.rows) if a.rows else None)

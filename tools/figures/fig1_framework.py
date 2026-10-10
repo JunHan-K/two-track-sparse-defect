@@ -1,14 +1,15 @@
 """Fig. 1: overview of the method with real data (final method, 2026-10-05).
 
   python tools/figures/fig1_data.py --step train|replay|infer     # once: real crops / maps -> fig1_data/*.npz
-  python tools/figures/fig1_framework.py --out paper/figures
+  python tools/figures/fig1_framework.py --out outputs/paper/figures
 
 (a) Training on two views: the same image enters as a downscaled whole view (letterbox 1024^2) and as native
     384^2 crops; ONE shared MiT-B0 segmenter (encoder stages s1-s4, all-MLP decoder, main head). Size-aware
     supervision: the main head's BCE weight w(a) (real map) and stage heads trained only during training, s1/s2 on
     small components only (real target), s3/s4 on all components.
-(b) Confusion replay: the trained model on native tiles of the training images; its false positives (real mined
-    boxes, red) are replayed with small-defect crops (real crops) in a 20-epoch refinement.
+(b) Sparse Defect Replay: the trained model on native tiles of the training images; its false positives (real boxes,
+    red) set how many random background crops each image receives; these are replayed with small-defect crops (real
+    crops) in a 20-epoch refinement.
 (c) Two-track inference on a validation image: low-resolution track -> p_L (real), candidates and support M;
     native track on the candidate crops -> p_S; merge rule; output (real). Recall mode = all native tiles.
 Numbers (crops / GFLOPs) are the validation means of the final model (tools/paper_tables.py).
@@ -33,6 +34,7 @@ plt.rcParams.update({"font.family": "STIXGeneral", "mathtext.fontset": "stix", "
                      "pdf.fonttype": 42, "ps.fonttype": 42})
 INK, MUTED = "#1f1f1f", "#6b6b6b"
 LOW, NAT, SIZE, REP, GT = "#2f66b3", "#7a4fc4", "#e07b1a", "#c8323c", "#2ca25f"
+ALL = "#8c510a"  # s3,4 targets (all defects); kept apart from the GT green
 NETF = "#e3ecf8"
 DATA = "outputs/figures/fig1_data"
 
@@ -47,9 +49,9 @@ def rbox(ax, x, y, w, h, fc="white", ec=INK, lw=0.7, ls="-", r=0.05, z=1):
                                 zorder=z))
 
 
-def img(ax, a, x, y, w, h=None, ec=None, lw=0.8, cmap=None, vmin=None, vmax=None, z=3):
+def img(ax, a, x, y, w, h=None, ec=None, lw=0.8, cmap=None, vmin=None, vmax=None, z=3, interp="lanczos"):
     h = h if h is not None else w * a.shape[0] / a.shape[1]
-    ax.imshow(a, extent=(x, x + w, y, y + h), cmap=cmap, vmin=vmin, vmax=vmax, interpolation="lanczos", zorder=z,
+    ax.imshow(a, extent=(x, x + w, y, y + h), cmap=cmap, vmin=vmin, vmax=vmax, interpolation=interp, zorder=z,
               aspect="auto")
     if ec:
         ax.add_patch(Rectangle((x, y), w, h, fc="none", ec=ec, lw=lw, zorder=z + 1))
@@ -82,7 +84,7 @@ def net(ax, x, y, s=1.0, c=LOW, label=True, stages=True):
         ax.add_patch(Polygon([(xx, y - h / 2), (xx + 0.11 * s, y - h / 2 + 0.05 * s), (xx + 0.11 * s, y + h / 2 + 0.05 * s),
                               (xx, y + h / 2)], closed=True, fc=NETF, ec=c, lw=0.7, zorder=4))
         if stages:
-            ax.text(xx + 0.055 * s, y - h / 2 - 0.035, f"$s_{i + 1}$", ha="center", va="top", fontsize=5.6, color=c)
+            ax.text(xx + 0.055 * s, y - h / 2 - 0.035, f"$s_{i + 1}$", ha="center", va="top", fontsize=6.6, color=c)
         xx += 0.17 * s
     ax.add_patch(Polygon([(xx, y - 0.22 * s), (xx + 0.30 * s, y - 0.32 * s), (xx + 0.30 * s, y + 0.32 * s), (xx, y + 0.22 * s)],
                          closed=True, fc=NETF, ec=c, lw=0.7, zorder=4))
@@ -110,11 +112,42 @@ def wblend(rgb, w, m):
     return np.where(m[..., None], c, g)
 
 
+def clipped_box(ax, x0, y0, w, h, bx, by, bw, bh, **kw):
+    """Rectangle (x0, y0, w, h) clipped to the image area (bx, by, bw, bh)."""
+    xa, ya = max(x0, bx), max(y0, by)
+    xb, yb = min(x0 + w, bx + bw), min(y0 + h, by + bh)
+    if xb > xa and yb > ya:
+        ax.add_patch(Rectangle((xa, ya), xb - xa, yb - ya, fc="none", **kw))
+
+
+def seg(ax, pts, c=INK, lw=0.9, head=True, z=8):
+    """Straight, right-angled connector through pts; arrowhead on the last segment."""
+    for (x0, y0), (x1, y1) in zip(pts[:-2], pts[1:-1]):
+        ax.plot([x0, x1], [y0, y1], color=c, lw=lw, solid_capstyle="butt", zorder=z)
+    if head:
+        arrow(ax, pts[-2], pts[-1], c=c, lw=lw, z=z)
+    else:
+        ax.plot([pts[-2][0], pts[-1][0]], [pts[-2][1], pts[-1][1]], color=c, lw=lw, zorder=z)
+
+
+def ring(ax, cx, cy, r, c="white", lw=0.9, z=9):
+    t = np.linspace(0, 2 * np.pi, 80)
+    ax.plot(cx + r * np.cos(t), cy + r * np.sin(t), color=c, lw=lw, zorder=z)
+
+
+def centre(m):
+    ys, xs = np.nonzero(m)
+    return xs.mean(), ys.mean()
+
+
 def draw(out_dir):
     T = np.load(resolve(DATA) / "train.npz")
     R = np.load(resolve(DATA) / "replay.npz")
     I = np.load(resolve(DATA) / "infer.npz")
-    W, H, Y0 = 7.16, 4.45, 0.22  # drawing coordinates in inches; [Y0, H] is shown
+    plt.rcParams.update({"font.size": 7.2})
+    LAB, SMALL, TITLE = 7.9, 7.3, 8.8
+    W, H, Y0 = 7.16, 3.72, 0.34  # inches; [Y0, H] shown; (c) is drawn compact and moved up by DC (below)
+    DC = 0.14
     fig = plt.figure(figsize=(W, H - Y0))
     ax = fig.add_axes([0, 0, 1, 1])
     ax.set_xlim(0, W)
@@ -122,159 +155,250 @@ def draw(out_dir):
     ax.axis("off")
 
     # ======================================================================= (a) training on two views
-    panel(ax, 0.03, 2.30, 4.62, 2.12, "(a) Twin-View SparSight Training: one lightweight segmenter, two views")
-    whole = overlay(T["whole"], T["whole_g"] > 0, GT, 0.9)
-    h = img(ax, whole, 0.13, 3.38, 0.95, ec=LOW, lw=1.0)
-    ax.text(0.13, 3.38 + h + 0.03, "whole image, letterbox $1024^2$", fontsize=5.6, color=LOW, va="bottom")
+    ax_, ay_, aw_, ah_ = 0.03, 1.92, 4.38, 1.77
+    panel(ax, ax_, ay_, aw_, ah_, "(a) Twin-View SparSight Training")
+    plt.setp(ax.texts[-1], fontsize=TITLE)
+    wx, wy, ww = 0.12, 2.66, 0.88
+    wh = img(ax, overlay(T["whole"], T["whole_g"] > 0, GT, 0.9), wx, wy, ww, ec=LOW, lw=1.0)
+    ax.text(wx, wy + wh + 0.04, "whole image ($1024^2$)", fontsize=LAB, color=LOW, va="bottom")
     nb = T["native_box"]
-    sx = 0.95 / nb[3]
-    ax.add_patch(Rectangle((0.13 + nb[1] * sx, 3.38 + h - (nb[0] + 384) * sx), 384 * sx, 384 * sx, fc="none", ec=NAT,
-                           lw=0.8, zorder=6))
-    nat = overlay(T["native"], T["native_g"], GT, 0.0)
-    img(ax, nat, 0.40, 2.45, 0.66, 0.66, ec=NAT, lw=1.0)
-    contour(ax, T["native_g"], 0.40, 2.45, 0.66, 0.66, c=GT, lw=0.5)
-    arrow(ax, (0.13 + (nb[1] + 192) * sx, 3.38 + h - (nb[0] + 384) * sx), (0.73, 3.13), c=NAT, lw=0.6, ls=(0, (2, 1.2)))
-    ax.text(0.37, 2.78, "native\n$384^2$ crop\n(defect-\ncentred,\n$p{=}0.5$)", fontsize=5.0, color=NAT, ha="right",
-            va="center", linespacing=1.0)
-    nx, ny = 1.42, 3.36
-    xe = net(ax, nx, ny, 1.0)
-    ax.text((nx + xe) / 2, ny + 0.47, "shared segmenter (MiT-B0, 3.8M)\nsame weights for both views", ha="center",
-            va="bottom", fontsize=5.6, color=LOW, linespacing=1.05)
-    arrow(ax, (1.10, 3.70), (nx - 0.02, ny + 0.12), c=LOW)
-    arrow(ax, (1.08, 2.80), (nx - 0.02, ny - 0.15), c=NAT, rad=0.2)
-    rbox(ax, xe + 0.08, ny - 0.12, 0.32, 0.24, fc=NETF, ec=LOW)
-    ax.text(xe + 0.24, ny, "main\nhead", ha="center", va="center", fontsize=5.2, color=LOW, linespacing=0.95, zorder=5)
-    arrow(ax, (xe, ny), (xe + 0.08, ny), c=LOW)
-    # main-head supervision: size-aware weight on the native crop
-    wx, wy, ws = 3.18, 3.02, 0.80
-    img(ax, wblend(T["native"], T["native_w"], T["native_g"]), wx, wy, ws, ws, ec=SIZE, lw=1.0)
-    ax.text(wx + ws / 2, wy + ws + 0.03, "target with size-aware weight $w(a)$", ha="center", va="bottom", fontsize=5.6,
-            color=SIZE)
-    cb = fig.add_axes([(wx + ws + 0.04) / W, (wy - Y0) / (H - Y0), 0.05 / W, ws / (H - Y0)])
-    cbar = fig.colorbar(plt.cm.ScalarMappable(norm=plt.Normalize(1, 5),
-                                              cmap=matplotlib.colors.ListedColormap(plt.get_cmap("magma")(np.linspace(0.38, 1, 64)))),
-                        cax=cb, ticks=[1, 3, 5])
-    cbar.ax.tick_params(labelsize=5, length=1.5, width=0.4, pad=1)
-    cbar.outline.set_linewidth(0.4)
-    arrow(ax, (xe + 0.40, ny), (wx - 0.03, ny), c=SIZE)
-    ax.text((xe + 0.40 + wx) / 2, ny + 0.05, "BCE$\cdot w$\n+ Dice", ha="center", va="bottom", fontsize=5.2, color=SIZE,
+    sx = ww / nb[3]
+    bx, by, bs = wx + nb[1] * sx, wy + wh - (nb[0] + 384) * sx, 384 * sx
+    ax.add_patch(Rectangle((bx, by), bs, bs, fc="none", ec=NAT, lw=0.9, zorder=6))
+    cs_n, cy_n = 0.50, 1.99
+    cx_n = bx + bs / 2 - cs_n / 2  # the crop sits right under its box: one straight arrow
+    img(ax, T["native"], cx_n, cy_n, cs_n, cs_n, ec=NAT, lw=1.0)
+    contour(ax, T["native_g"], cx_n, cy_n, cs_n, cs_n, c=GT, lw=0.6)
+    seg(ax, [(bx + bs / 2, by), (bx + bs / 2, cy_n + cs_n + 0.01)], c=NAT, lw=0.8)
+    ax.text(bx + bs / 2 + 0.05, (wy + cy_n + cs_n) / 2, "every 3rd batch", fontsize=SMALL, color=NAT, va="center")
+    ax.text(cx_n + cs_n + 0.05, cy_n + 0.02, "native\n$384^2$ crop", fontsize=LAB, color=NAT, va="bottom",
             linespacing=1.0)
-    ax.text(wx + ws / 2 + 0.05, wy - 0.04, "small defects weigh up to $5\\times$\n(background 1)", ha="center", va="top",
-            fontsize=5.0, color=SIZE, linespacing=1.0)
-    # stage heads (training only)
-    rbox(ax, 1.30, 2.38, 1.78, 0.56, fc="none", ec=MUTED, ls=(0, (2.5, 1.5)), lw=0.6)
-    ts = 0.40
-    img(ax, overlay(T["native"], T["native_small"], SIZE, 0.95), 1.36, 2.44, ts, ts, ec=SIZE, lw=0.8)
-    img(ax, overlay(T["native"], T["native_g"], GT, 0.95), 1.84, 2.44, ts, ts, ec=GT, lw=0.8)
-    for i in range(4):
-        x0 = nx + 0.17 * i + 0.055
-        top = ny - [0.62, 0.50, 0.38, 0.28][i] / 2 - 0.13
-        arrow(ax, (x0, top), (1.56 if i < 2 else 2.04, 2.86), c=SIZE if i < 2 else GT, lw=0.5, hw=0.15)
-    ax.text(2.30, 2.80, "stage heads (training only)", fontsize=5.2, color=MUTED, va="center")
-    ax.text(2.30, 2.64, "$s_1,s_2$: small defects only", fontsize=5.2, color=SIZE, va="center")
-    ax.text(2.30, 2.50, "$s_3,s_4$: all defects", fontsize=5.2, color=GT, va="center")
-    ax.text(3.18, 2.48, "$\\mathcal{L}=\\mathcal{L}_{main}(w)+\\frac{\\lambda}{4}\\sum_k\\mathcal{L}_{s_k}$", fontsize=6.2,
-            va="center", color=INK)
+    # one shared network
+    nx, ny = 1.55, 2.98
+    xe = net(ax, nx, ny, 0.95, label=False)
+    ax.text((nx + xe) / 2, ny + 0.38, "one MiT-B0 segmenter for both views", ha="center", va="bottom", fontsize=LAB, color=LOW)
+    seg(ax, [(wx + ww, wy + wh / 2), (nx - 0.03, wy + wh / 2)], c=LOW)
+    seg(ax, [(cx_n + cs_n, cy_n + cs_n * 0.8), (1.43, cy_n + cs_n * 0.8), (1.43, ny - 0.12), (nx - 0.03, ny - 0.12)],
+        c=NAT)
+    # main head -> size-aware weighted target
+    # main head with the gated fusion of the stage heads (s1, s2 evidence, s3, s4 gate), used at inference
+    hw_ = 0.46
+    rbox(ax, xe + 0.10, ny - 0.15, hw_, 0.30, fc=NETF, ec=LOW)
+    ax.text(xe + 0.10 + hw_ / 2, ny, "head\n+ fusion", ha="center", va="center", fontsize=SMALL, color=LOW, zorder=5,
+            linespacing=0.95)
+    seg(ax, [(xe, ny), (xe + 0.10, ny)], c=LOW)
+    tx, ty, ts = 3.63, 2.44, 0.72
+    img(ax, wblend(T["native"], T["native_w"], T["native_g"]), tx, ty, ts, ts, ec=SIZE, lw=1.0)
+    seg(ax, [(xe + 0.10 + hw_, ny), (tx - 0.02, ny)], c=SIZE)
+    ax.text((xe + 0.10 + hw_ + tx) / 2, ny + 0.04, "weighted\nBCE + Dice", fontsize=SMALL, color=SIZE, ha="center",
+            va="bottom", linespacing=1.0)
+    ax.text(tx + ts / 2, ty + ts + 0.04, "size-aware weight", ha="center", va="bottom", fontsize=LAB, color=SIZE)
+    ax.text(tx + ts / 2, ty - 0.04, "small defects $\\leq\\!5\\times$", ha="center", va="top", fontsize=SMALL,
+            color=SIZE)
+    # stage heads, training only
+    # stage heads (training only), right under the encoder stages: s1, s2 -> small-defect targets, s3, s4 -> all
+    sy, st = 1.98, 0.34
+    sxs = [nx + 0.17 * 0.95 * i + 0.055 * 0.95 for i in range(4)]  # stage centres (as drawn by net())
+    tb = 0.27  # thumbnail side; centred under (s1, s2) and (s3, s4); straight arrows converge on each
+    cA, cB = (sxs[0] + sxs[1]) / 2, (sxs[2] + sxs[3]) / 2
+    # each thumbnail shows only its own target mask, solid in the frame colour, over a faded crop
+    faded = np.repeat((255 - (255 - T["native"].astype(np.float32).mean(2, keepdims=True)) * 0.3), 3, 2)
+    for cc, m, c in ((cA, T["native_small"], SIZE), (cB, T["native_g"], ALL)):
+        img(ax, overlay(faded, ndimage.binary_dilation(m > 0, iterations=3), c, 1.0), cc - tb / 2, sy + 0.02, tb, tb,
+            ec=c, lw=0.8)
+    for i, x in enumerate(sxs):
+        cc = cA if i < 2 else cB
+        seg(ax, [(x, 2.57), (cc + (x - cc) * 0.2, sy + 0.02 + tb + 0.01)], c=SIZE if i < 2 else ALL, lw=0.7)
+    lx = cB + tb / 2 + 0.06
+    ax.text(lx, sy + st, "stage heads, fused at inference", fontsize=SMALL, color=MUTED, va="top")
+    seg(ax, [(xe + 0.10 + hw_ / 2, sy + st + 0.03), (xe + 0.10 + hw_ / 2, ny - 0.16)], c=MUTED, lw=0.8)
+    ax.text(lx, sy + 0.17, "$s_{1,2}$: small defects", fontsize=SMALL, color=SIZE, va="center")
+    ax.text(lx, sy + 0.01, "$s_{3,4}$: all defects", fontsize=SMALL, color=ALL, va="bottom")
 
-    # ======================================================================= (b) confusion replay
-    panel(ax, 4.72, 2.30, 2.41, 2.12, "(b) Sparse Confusion Replay")
+    # ======================================================================= (b) Sparse Defect Replay
+    bx_, by_, bw_, bh_ = 4.48, 1.92, 2.65, 1.77
+    panel(ax, bx_, by_, bw_, bh_, "(b) Sparse Defect Replay")
+    plt.setp(ax.texts[-1], fontsize=TITLE)
     rw = R["whole"]
-    rx, ry, rwid = 4.82, 3.10, 1.12
+    rx, ry, rwid = 4.57, 2.52, 1.00
     rh = img(ax, rw, rx, ry, rwid)
-    contour(ax, R["whole_g"] > 0, rx, ry, rwid, rh, c=GT, lw=0.6)
-    s = rwid / rw.shape[1]
-    for fx, fy, sup in R["fp_xy"]:
-        b = 0.06
-        ax.add_patch(Rectangle((rx + fx * s - b / 2, ry + rh - fy * s - b / 2), b, b, fc="none", ec=REP, lw=0.6, zorder=6))
-    ax.text(rx, ry + rh + 0.03, "native-tile prediction, training image", fontsize=5.2, color=INK, va="bottom")
-    ax.text(rx, ry - 0.03, "□ false positives (print, vents, edges)", fontsize=5.0, color=REP, va="top")
-    ax.text(rx, ry - 0.16, "— ground truth", fontsize=5.0, color=GT, va="top")
-    cx0, cy0, cs = 6.06, 3.62, 0.33
-    for i, c in enumerate(R["fp_crops"]):
-        img(ax, c, cx0 + (i % 3) * (cs + 0.03), cy0, cs, cs, ec=REP, lw=0.8)
-    ax.text(cx0, cy0 + cs + 0.03, f"mined FP crops ({int(R['n_fp_total']):,})", fontsize=5.2, color=REP, va="bottom")
+    s_ = rwid / rw.shape[1]
+    k_fp = len(R["fp_xy"])
+    # orange: small defects (centres of the small-defect crops); green: other defects (GT, as in (a), (c));
+    # red: native false positives (their count k sets the number of random background crops)
+    lab_, n_ = ndimage.label(R["whole_g"] > 0)
+    small_ids = {lab_[min(int(round(y)), lab_.shape[0] - 1), min(int(round(x)), lab_.shape[1] - 1)]
+                 for x, y in R["pos_xy"]} - {0}
+    for j, sl in enumerate(ndimage.find_objects(lab_)):
+        y0, y1, x0, x1 = sl[0].start, sl[0].stop, sl[1].start, sl[1].stop
+        w_, h_ = max((x1 - x0) * s_, 0.05), max((y1 - y0) * s_, 0.05)
+        cxp, cyp = rx + (x0 + x1) / 2 * s_, ry + rh - (y0 + y1) / 2 * s_
+        ax.add_patch(Rectangle((cxp - w_ / 2 - 0.01, cyp - h_ / 2 - 0.01), w_ + 0.02, h_ + 0.02, fc="none",
+                               ec=SIZE if j + 1 in small_ids else GT, lw=0.8, zorder=6))
+    for fx, fy, _ in R["fp_xy"]:
+        ax.add_patch(Rectangle((rx + fx * s_ - 0.03, ry + rh - fy * s_ - 0.03), 0.06, 0.06, fc="none", ec=REP, lw=0.7,
+                               zorder=6))
+    ax.text(rx, ry + rh + 0.04, "false positives", fontsize=LAB, color=REP, va="bottom")
+    ax.text(rx + rwid / 2, ry - 0.03, f"FP count = {k_fp}", fontsize=LAB, color=REP, ha="center", va="top")
+    # the two crop sets, each framed as one group
+    cs, gp, gx0 = 0.30, 0.03, 5.86
+    bgy, psy = 3.00, 2.50
+    for i, c in enumerate(R["bg_crops"]):
+        img(ax, c, gx0 + i * (cs + gp), bgy, cs, cs, ec=REP, lw=0.7)
     for i, c in enumerate(R["pos_crops"]):
-        img(ax, c, cx0 + i * (cs + 0.03), cy0 - 0.50, cs, cs, ec=SIZE, lw=0.8)
-    ax.text(cx0 + 2 * (cs + 0.03), cy0 - 0.50 + cs / 2, f"small-\ndefect\ncrops\n({int(R['n_pos_total'])})",
-            fontsize=5.0, color=SIZE, va="center", linespacing=1.0)
-    arrow(ax, (rx + rwid + 0.02, ry + rh * 0.75), (cx0 - 0.03, cy0 + cs / 2), c=REP)
-    rbox(ax, 5.30, 2.40, 1.78, 0.46, fc="white", ec=REP, lw=0.8)
-    ax.text(6.19, 2.63, "refine the same network for 20 epochs;\nreplay batch after every 3rd whole-image batch\n"
-            "(50% FP crops, 50% small-defect crops)", ha="center", va="center", fontsize=5.0, color=INK, linespacing=1.05)
-    arrow(ax, (6.30, cy0 - 0.52), (6.30, 2.87), c=REP)
+        img(ax, c, gx0 + i * (cs + gp), psy, cs, cs, ec=SIZE, lw=0.7)
+    pad = 0.035
+    bg_x1 = gx0 + 3 * cs + 2 * gp + pad
+    ps_x1 = gx0 + 2 * cs + gp + pad
+    rbox(ax, gx0 - pad, bgy - pad, bg_x1 - gx0 + pad, cs + 2 * pad, fc="none", ec=REP, lw=0.9, r=0.03, z=5)
+    rbox(ax, gx0 - pad, psy - pad, ps_x1 - gx0 + pad, cs + 2 * pad, fc="none", ec=SIZE, lw=0.9, r=0.03, z=5)
+    ax.text(bg_x1, bgy + cs + pad + 0.03, "background $\\propto$ FP count", fontsize=SMALL, color=REP, va="bottom",
+            ha="right")
+    ax.text(ps_x1 + 0.05, psy + cs / 2, "small-\ndefect\ncrops", fontsize=SMALL, color=SIZE, va="center",
+            linespacing=1.0)
+    # image -> groups, groups -> replay batch (straight, right-angled)
+    seg(ax, [(rx + rwid, bgy + cs / 2), (gx0 - pad - 0.01, bgy + cs / 2)], c=REP)
+    seg(ax, [(rx + rwid, psy + cs / 2), (gx0 - pad - 0.01, psy + cs / 2)], c=SIZE)
+    rbox(ax, 4.57, 1.98, 2.49, 0.36, fc="white", ec=INK, lw=0.8)
+    ax.text(5.815, 2.25, "replay batch: $\\frac{1}{2}$ small-defect + $\\frac{1}{2}$ background crops", ha="center",
+            va="center", fontsize=SMALL, color=INK)
+    ax.text(5.815, 2.08, "after every 3rd whole-image batch; 20 epochs", ha="center", va="center", fontsize=SMALL,
+            color=INK)
+    seg(ax, [((gx0 - pad + ps_x1) / 2, psy - pad), ((gx0 - pad + ps_x1) / 2, 2.35)], c=SIZE)
+    seg(ax, [(bg_x1, bgy + cs / 2), (7.03, bgy + cs / 2), (7.03, 2.35)], c=REP)
 
-    # ======================================================================= (c) two-track inference
-    panel(ax, 0.03, 0.26, 7.10, 1.98, "(c) Twin-Track SparSight Inference with the same network")
+    # ======================================================================= (c) inference
+    before_c = {id(a) for a in ax.patches + ax.texts + ax.lines + ax.images + ax.collections}
+    panel(ax, 0.03, 0.23, 7.10, 1.62 - DC, "(c) Twin-Track SparSight Inference")
+    plt.setp(ax.texts[-1], fontsize=TITLE)
     im_ = I["img"]
     iH, iW = im_.shape[:2]
-    ix, iy, iw = 0.13, 1.28, 1.45
-    ih = img(ax, im_, ix, iy, iw)
+    zs = 0.62
+    zy0 = 0.76
+    iw = min(zs * iW / iH, 1.15)  # input and global prediction keep the image aspect (height zs)
+    ih = iw * iH / iW
+    iy = zy0 + (zs - ih) / 2
+    # centre the row in the panel: row width = images, nets (0.49 wide at scale 0.5), merge column and the gaps below
+    nw = 4 * 0.17 * 0.5 + 0.30 * 0.5
+    row_w = iw + 0.36 + nw + 0.25 + iw + 0.50 + zs + 0.24 + nw + 0.26 + (zs - 0.04) / 2 + 0.36 + 0.10 + 0.24 + zs
+    ix = 0.03 + (7.10 - row_w) / 2
+    img(ax, im_, ix, iy, iw, ih)
     contour(ax, I["g"] > 0, ix, iy, iw, ih, c=GT, lw=0.6)
-    ax.text(ix, iy + ih + 0.03, "test image ($3840{\\times}2748$, lower part)", fontsize=5.4, va="bottom")
+    ax.text(ix, iy + ih + 0.04, "input image", fontsize=LAB, va="bottom")
     ly = iy + ih / 2
-    xe = net(ax, 1.98, ly, 0.5, LOW, label=False, stages=False)
-    arrow(ax, (ix + iw + 0.02, ly), (1.96, ly), c=LOW)
-    ax.text(1.88, ly + 0.25, "$\\downarrow1024^2$", fontsize=5.4, color=LOW, ha="center")
-    ax.text((1.98 + xe) / 2, ly - 0.24, "Global Sight Track (L)", fontsize=5.6, color=LOW, ha="center", va="top")
-    px, pw = xe + 0.18, 1.45
-    ph = img(ax, blend(im_, I["L"]), px, iy, pw)
-    contour(ax, I["M"] > 0, px, iy, pw, ph, c="#58c4dd", lw=0.5)
-    arrow(ax, (xe, ly), (px - 0.02, ly), c=LOW)
+    gx0n = ix + iw + 0.36
+    xe = net(ax, gx0n, ly, 0.5, LOW, label=False, stages=False)
+    seg(ax, [(ix + iw, ly), (gx0n - 0.02, ly)], c=LOW)
+    ax.text((gx0n + xe) / 2, iy - 0.05, "Global Sight\nTrack (L)", fontsize=LAB, color=LOW, ha="center", va="top",
+            linespacing=1.0)
+    # every prediction is drawn as in Fig. 2: probability map (inferno), ground truth in green
+    px, pw = xe + 0.25, iw
+    # shown at ~0.6 in: block-max pooled for display so thin predicted defects stay visible (averaging interpolation
+    # erases them); no GT outline here, it would cover them (the ground truth is outlined on the input image)
+    k_ = 5  # block maximum 5x5 (900 px -> 180 px, about the printed resolution), drawn without interpolation
+    Lb = I["L"][: I["L"].shape[0] // k_ * k_, : I["L"].shape[1] // k_ * k_]
+    Lb = Lb.reshape(Lb.shape[0] // k_, k_, Lb.shape[1] // k_, k_).max((1, 3))
+    imb = im_[: Lb.shape[0] * k_ : k_, : Lb.shape[1] * k_ : k_]  # the same image, dimmed, under p_L (context)
+    img(ax, blend(imb, Lb), px, iy, pw, ih, ec=LOW, lw=0.8, interp="nearest")
+    contour(ax, I["L"] > 0.5, px, iy, pw, ih, c="#ffd23f", lw=0.9)  # predicted regions, outlined like the GT
+    seg(ax, [(xe, ly), (px - 0.02, ly)], c=LOW)
+    ax.text(px, iy + ih + 0.04, "global prediction $p_L$", fontsize=LAB, color=LOW, va="bottom")
+    ax.text(px + pw / 2, iy - 0.04, "thin boxes: candidates\nbold box: zoomed window", fontsize=SMALL,
+            color=MUTED, ha="center", va="top", linespacing=1.0)
     b = 384 * 900 / I["full_hw"][1] * pw / iW
-    for cx_, cy_, _ in I["cand"]:
-        ax.add_patch(Rectangle((px + cx_ * pw / iW - b / 2, iy + ph - cy_ * pw / iW - b / 2), b, b, fc="none", ec=NAT,
-                               lw=0.9, zorder=7))
-    ax.text(px, iy + ph + 0.03, "$p_L$ with candidates (top-$K$ peaks $>\\tau$) and support $M$", fontsize=5.3,
-            va="bottom", color=LOW)
-    # native track on a candidate
+    for cx_, cy_, _ in I["cand"]:  # all candidates; thin, so the predicted outlines stay visible
+        clipped_box(ax, px + cx_ * pw / iW - b / 2, iy + ih - cy_ * pw / iW - b / 2, b, b, px, iy, pw, ih, ec=NAT,
+                    lw=0.6, zorder=7)
+    # native track on the candidate holding the example defect
     zb = I["zoom_box"]
-    zx0 = px + pw + 0.25
-    zs = 0.60
+    zx0 = px + pw + 0.50
     zi = I["zoom_img"]
-    img(ax, zi, zx0, iy - 0.06, zs, zs, ec=NAT, lw=1.0)
-    contour(ax, I["zoom_g"], zx0, iy - 0.06, zs, zs, c=GT, lw=0.5)
-    ax.text(zx0 + zs / 2, iy - 0.06 + zs + 0.03, "native crop", ha="center", va="bottom", fontsize=5.3, color=NAT)
-    cb_x, cb_y = px + zb[0] * pw / iW, iy + ph - zb[1] * pw / iW
-    arrow(ax, (cb_x + b / 2, cb_y - b / 2), (zx0 - 0.02, iy + 0.12), c=NAT, rad=0.3)
-    xe2 = net(ax, zx0 + zs + 0.14, iy + zs / 2 - 0.06, 0.5, NAT, label=False, stages=False)
-    arrow(ax, (zx0 + zs + 0.01, iy + zs / 2 - 0.06), (zx0 + zs + 0.12, iy + zs / 2 - 0.06), c=NAT)
-    ax.text((zx0 + zs + 0.14 + xe2) / 2, iy - 0.06 + zs / 2 - 0.30, "Native Sight Track (S)", fontsize=5.6, color=NAT, ha="center",
-            va="top")
-    cx1 = xe2 + 0.18
-    img(ax, blend(zi, I["zoom_L"]), cx1, iy - 0.06, zs, zs, ec=LOW, lw=0.9)
-    img(ax, blend(zi, I["zoom_P"]), cx1 + zs + 0.08, iy - 0.06, zs, zs, ec=NAT, lw=0.9)
-    arrow(ax, (xe2, iy + zs / 2 - 0.06), (cx1 - 0.02, iy + zs / 2 - 0.06), c=NAT)
-    ax.text(cx1 + zs / 2, iy - 0.06 + zs + 0.03, f"$p_L$ only: {I['zoom_L'].max():.2f}", ha="center", va="bottom",
-            fontsize=5.3, color=LOW)
-    ax.text(cx1 + 1.5 * zs + 0.08, iy - 0.06 + zs + 0.03, f"merged $p$: {I['zoom_P'].max():.2f}", ha="center",
-            va="bottom", fontsize=5.3, color=NAT)
-    # operating points
-    oy = 0.33
-    rbox(ax, 0.13, oy, 3.45, 0.60, fc="white", ec=NAT, lw=0.8)
-    ax.text(0.20, oy + 0.55, "Precision mode", fontsize=6.0, weight="bold", color=NAT, va="top")
-    ax.text(0.20, oy + 0.40, "Global Sight Track (L) on the whole image; Native Sight Track (S) on the proposed crops; merge\n"
-            "$p=\\max(p_L,\\ p_S\\,(1_M+0.5\\cdot 1_{\\bar{M}}))$: native evidence without global support is damped.\n"
-            "3.7 native crops per image $\\Rightarrow$ 125 GFLOPs (1.4$\\times$ a single pass)",
-            fontsize=5.3, va="top", linespacing=1.25)
-    rbox(ax, 3.68, oy, 3.35, 0.60, fc="white", ec=MUTED, lw=0.8)
-    ax.text(3.75, oy + 0.55, "Recall mode", fontsize=6.0, weight="bold", color=INK, va="top")
-    ax.text(3.75, oy + 0.38, "Native Sight Track (S) on all $384^2$ tiles; maximum with L.\n"
-            "24 crops per image $\\Rightarrow$ 308 GFLOPs; highest small-defect AUPRO", fontsize=5.3, va="top",
-            linespacing=1.2)
-    gx, gw = 6.05, 0.90
-    gh = gw * iH / iW
-    gy = oy + (0.62 - gh) / 2
-    img(ax, im_, gx, gy, gw, gh)
-    t = 384 * 900 / I["full_hw"][1] * gw / iW
+    zg = I["zoom_g"] > 0
+    gx_, gy_ = centre(I["zoom_g"])
+
+    Z = 128  # crop panels are zoomed to a Z x Z window of the 384 x 384 native crop around the example defect
+    wy0, wx0 = (int(np.clip(round(v - Z / 2), 0, 384 - Z)) for v in (gy_, gx_))
+
+    def crop_panel(a, x, ec, lab, col, y=zy0, sz=zs, below=False):
+        img(ax, a[wy0:wy0 + Z, wx0:wx0 + Z], x, y, sz, sz, ec=ec, lw=1.0)
+        contour(ax, zg[wy0:wy0 + Z, wx0:wx0 + Z], x, y, sz, sz, c=GT, lw=0.6 if sz > 0.4 else 0.3)
+        if below:
+            ax.text(x + sz / 2, y - 0.04, lab, ha="center", va="top", fontsize=LAB, color=col)
+            return
+        ax.text(x + sz / 2, y + sz + 0.04, lab, ha="center", va="bottom", fontsize=LAB, color=col)
+
+    crop_panel(zi, zx0, NAT, "native crop (zoom)", NAT)
+    cbx = px + (zb[0] + zb[2]) * pw / iW
+    # the window shown in the zoomed panels, boxed on the input and the global prediction (bold), and joined to the
+    # native-crop panel by two straight zoom lines
+    sc_ = zb[2] / 384  # 900-px panel scale per original pixel
+    wx_, wy_, ws_ = zb[0] + wx0 * sc_, zb[1] + wy0 * sc_, Z * sc_
+    def wbox(x0_, w_):
+        s_ = max(ws_ * w_ / iW, 0.07)  # at least 0.07 in so it is visible
+        cx_, cy_ = x0_ + (wx_ + ws_ / 2) * w_ / iW, iy + ih - (wy_ + ws_ / 2) * w_ / iW
+        ax.add_patch(Rectangle((cx_ - s_ / 2, cy_ - s_ / 2), s_, s_, fc="none", ec=NAT, lw=1.6, zorder=8))
+        return cx_ + s_ / 2, cy_ - s_ / 2, cy_ + s_ / 2
+    wbox(ix, iw)
+    bx1, by0, by1 = wbox(px, pw)
+    for yb_, yz_ in ((by1, zy0 + zs), (by0, zy0)):
+        ax.plot([bx1, zx0], [yb_, yz_], color=NAT, lw=0.7, zorder=8)
+    xe2 = net(ax, zx0 + zs + 0.24, zy0 + zs / 2, 0.5, NAT, label=False, stages=False)
+    seg(ax, [(zx0 + zs, zy0 + zs / 2), (zx0 + zs + 0.22, zy0 + zs / 2)], c=NAT)
+    ax.text((zx0 + zs + 0.24 + xe2) / 2, iy - 0.05, "Native Sight\nTrack (S)", fontsize=LAB, color=NAT, ha="center",
+            va="top", linespacing=1.0)
+    # the merge (Eq. 3) on the same window: global p_L (top, from the global prediction) and native p_S (bottom)
+    cz = (zs - 0.04) / 2
+    ox = xe2 + 0.26
+    ctr = zy0 + zs / 2
+    yt, yb = ctr + 0.02, ctr - 0.02 - cz
+    crop_panel(heat(I["zoom_L"]), ox, LOW, "", LOW, y=yt, sz=cz)
+    crop_panel(heat(I["zoom_S"]), ox, NAT, "native $p_S$", NAT, y=yb, sz=cz, below=True)
+    seg(ax, [(xe2, ctr), (ox - 0.07, ctr), (ox - 0.07, yb + cz / 2), (ox - 0.02, yb + cz / 2)], c=NAT)
+    yr = 1.70 - DC
+    rx_ = px + pw + 0.30  # leaves the global prediction at its right edge, clear of its label
+    seg(ax, [(px + pw, iy + ih - 0.02), (rx_, iy + ih - 0.02), (rx_, yr), (ox + cz / 2, yr), (ox + cz / 2, yt + cz + 0.01)],
+        c=LOW)
+    ax.text(ox + cz / 2 - 0.04, yr + 0.01, "global $p_L$, same window", ha="right", va="bottom", fontsize=SMALL,
+            color=LOW)
+    mx, my_, mr = ox + cz + 0.36, ctr, 0.10
+    ring(ax, mx, my_, mr, c=INK, lw=0.8)
+    ax.text(mx, my_, "max", ha="center", va="center", fontsize=SMALL - 0.6, color=INK)
+    seg(ax, [(ox + cz, yt + cz / 2), (mx - mr * 0.75, my_ + mr * 0.66)], c=LOW)
+    seg(ax, [(ox + cz, yb + cz / 2), (mx - mr * 0.75, my_ - mr * 0.66)], c=NAT)
+    fx_ = mx + mr + 0.24
+    seg(ax, [(mx + mr, my_), (fx_ - 0.02, my_)], c=INK)
+    crop_panel(heat(I["zoom_P"]), fx_, INK, "final prediction $p$", INK)
+    # operating points, compact: what each mode re-inspects on the same image
+    my, mt = 0.26, 0.30
+    th = mt * iH / iW
+    t = 384 * 900 / I["full_hw"][1] * mt / iW
+    # mode strip spans the same width as the row: precision at its left edge, recall ending at its right edge
+    modes_x = ix
+    img(ax, im_, modes_x, my, mt, th)
+    for cx_, cy_, _ in I["cand"]:
+        clipped_box(ax, modes_x + cx_ * mt / iW - t / 2, my + th - cy_ * mt / iW - t / 2, t, t, modes_x, my, mt, th,
+                    ec=NAT, lw=0.7, zorder=7)
+    ax.text(modes_x + mt + 0.06, my + th / 2, "precision mode: candidates only", fontsize=SMALL, color=NAT,
+            va="center")
+    rt = ax.text(ix + row_w, my + th / 2, "recall mode: every native tile", fontsize=SMALL, color=NAT,
+                 va="center", ha="right")
+    bb = rt.get_window_extent(renderer=fig.canvas.get_renderer()).transformed(ax.transData.inverted())
+    rx2 = bb.x0 - 0.06 - mt
+    img(ax, im_, rx2, my, mt, th)
     k = 1
-    while k * t < gw:
-        ax.plot([gx + k * t] * 2, [gy, gy + gh], color="white", lw=0.35, zorder=6)
+    while k * t < mt:
+        ax.plot([rx2 + k * t] * 2, [my, my + th], color=NAT, lw=0.4, zorder=6)
         k += 1
     k = 1
-    while k * t < gh:
-        ax.plot([gx, gx + gw], [gy + gh - k * t] * 2, color="white", lw=0.35, zorder=6)
+    while k * t < th:
+        ax.plot([rx2, rx2 + mt], [my + th - k * t] * 2, color=NAT, lw=0.4, zorder=6)
         k += 1
 
+    # move panel (c) up by DC so it sits right under (a), (b) (patches carry their own patch transform)
+    sh = matplotlib.transforms.Affine2D().translate(0, DC) + ax.transData
+    for a in ax.patches + ax.texts + ax.lines + ax.images + ax.collections:
+        if id(a) not in before_c:
+            a.set_transform(sh)
     out = resolve(out_dir)
     out.mkdir(parents=True, exist_ok=True)
     for ext in ("pdf", "png"):
