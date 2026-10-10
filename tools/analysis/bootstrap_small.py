@@ -68,16 +68,21 @@ def main():
     a = argparse.ArgumentParser()
     a.add_argument("--n", type=int, default=2000)
     a.add_argument("--tol", type=int, default=3)
+    a.add_argument("--ours", default=None, help="experiment id of the reference model (default: the final model)")
+    a.add_argument("--only", nargs="*", default=None, help="compare only these entries of OTHERS (by name)")
     a = a.parse_args()
-    ours = load(OURS[1], OURS[2], a.tol)
+    ref = (a.ours, a.ours, OURS[2]) if a.ours else OURS
+    ours = load(ref[1], ref[2], a.tol)
     ids = ours[0]["ids"]
     rng = np.random.default_rng(0)
     samples = [rng.integers(0, len(ids), len(ids)) for _ in range(a.n)]
     full = np.arange(len(ids))
     a_ours = ap(ours, full)
-    res = {"tol": a.tol, "n_boot": a.n, "n_images": len(ids), "ours": OURS[0], "ours_ap": a_ours, "vs": {}}
+    res = {"tol": a.tol, "n_boot": a.n, "n_images": len(ids), "ours": ref[0], "ours_exp": ref[1], "ours_ap": a_ours, "vs": {}}
     b_ours = np.array([ap(ours, i) for i in samples])
     for name, exp, tag in OTHERS:
+        if a.only and name not in a.only:
+            continue
         runs = load(exp, tag, a.tol)
         for r in runs:  # align image order with ours
             if r["ids"] != ids:
@@ -91,7 +96,7 @@ def main():
         print(f"{name:20s} AP={100 * res['vs'][name]['ap']:5.1f}  ours-them={100 * res['vs'][name]['diff']:+5.1f} "
               f"CI95=[{100 * lo:+5.1f}, {100 * hi:+5.1f}]  P(ours better)={res['vs'][name]['p_better']:.3f}", flush=True)
     print(f"ours AP={100 * a_ours:.1f}")
-    out = ROOT / "outputs" / f"bootstrap_small_vision_test_tol{a.tol}.json"
+    out = ROOT / "outputs" / f"bootstrap_small_vision_test_tol{a.tol}{'_' + a.ours if a.ours else ''}.json"
     json.dump(res, open(out, "w"), indent=1)
     print("saved", out)
 
