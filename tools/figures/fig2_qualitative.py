@@ -1,23 +1,18 @@
-"""Fig. 2: qualitative comparison on a sparse-defect benchmark (final method, 2026-10-05).
+"""Fig. 2: qualitative comparison on the VISION test split.
 
-  python tools/figures/fig2_qualitative.py --dataset vision --split val
-  python tools/figures/fig2_qualitative.py --dataset vision --split test     # paper (after the test pass)
+  python tools/figures/fig2_qualitative.py --mixed --split test --out outputs/paper/figures      # the paper figure
 
-Columns: input (GT outline) | SegFormer-B0 | B0 at 1536 | U-Net | ours (precision mode) | ours + confusion replay.
-Reads probability maps saved by evaluate.py / evaluate_zoom.py --save-probs
-(outputs/<exp>/predictions/<split>[_<tag>]/<id>.npz). Missing maps are drawn as grey "pending" panels.
+Columns: input (GT outline) | SegFormer-B0 | B0 at 1536^2 | U-Net | SegFormer-B5 | Mask2Former | MagNet |
+ours (precision mode) | ours (recall mode). Reads probability maps saved by evaluate.py / evaluate_zoom.py
+--save-probs (outputs/<exp>/predictions/<split>[_<tag>]/<id>.npz).
 
-Rows are picked automatically and reproducibly (rule fixed before the final results): baseline and
-ours-final are binarised at their own validation thresholds; coverage = fraction of SMALL-defect GT
-pixels predicted positive (components below the Core Q33 component-area edge, as in the metrics);
-only images with at least one small component are eligible;
-  gain1, gain2  defect images with the largest coverage(ours final) - coverage(baseline)
-  loss          among defect images where ours covers part of the small defects (coverage > 0), the one with
-                the smallest coverage(ours final) - coverage(baseline) (a weakness, not a total miss)
-(no "false alarm" row: VISION has no labelled normal images). Ties are broken by image id.
-Each panel is a square crop (original resolution) centred on the smallest GT component, side =
-clip(--zoom x its bounding-box side, --min-window, --window), so tiny defects stay visible.
-The previous KSDD2 / nested-capacity version is in git history (commit 44cba88 and earlier).
+Rows (draw_mixed), by fixed rules on small-defect coverage (fraction of small-defect GT pixels predicted
+positive at each model's validation threshold; small = below the Core 33rd-percentile component area):
+  1  the median gain over SegFormer-B0 among small defects that both of our modes cover >= 25 points better
+  2  the same rule in another category
+  3  a recall-mode false alarm: both modes find the defect, the recall mode adds the most isolated false-alarm area
+The per-image counts in the caption (covers more / less / misses all) are printed by the default (non --mixed) run.
+Each panel is a square crop centred on the selected defect.
 """
 import argparse
 import json

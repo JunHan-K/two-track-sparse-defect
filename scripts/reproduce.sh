@@ -22,7 +22,7 @@ train_eval() {  # config, then evaluation of the whole-image model on val+test (
   done
 }
 
-ours() {  # step 1 -> mine native false positives -> refinement with confusion replay -> both operating points
+ours() {  # step 1 -> mine native false positives -> refinement with Sparse Defect Replay -> both operating points
   local st=${P}_ours_stage1
   for s in $SEEDS; do
     local x=$(sfx $s)

@@ -310,8 +310,7 @@ def draw(out_dir):
     img(ax, blend(imb, Lb), px, iy, pw, ih, ec=LOW, lw=0.8, interp="nearest")
     contour(ax, I["L"] > 0.5, px, iy, pw, ih, c="#ffd23f", lw=0.9)  # predicted regions, outlined like the GT
     seg(ax, [(xe, ly), (px - 0.02, ly)], c=LOW)
-    ax.text(px, iy + ih + 0.04, "global prediction $p_L$", fontsize=LAB, color=LOW, va="bottom")
-    ax.text(px + pw / 2, iy - 0.04, "thin: candidates\nbold: zoomed", fontsize=SMALL,
+    ax.text(px + pw / 2, iy - 0.04, "thin: candidates\nbold: re-inspected", fontsize=SMALL,
             color=MUTED, ha="center", va="top", linespacing=1.0)
     b = 384 * 900 / I["full_hw"][1] * pw / iW
     for cx_, cy_, _ in I["cand"]:  # all candidates; thin, so the predicted outlines stay visible
@@ -335,8 +334,7 @@ def draw(out_dir):
             return
         ax.text(x + sz / 2, y + sz + 0.04, lab, ha="center", va="bottom", fontsize=LAB, color=col)
 
-    crop_panel(zi, zx0, NAT, "", NAT)
-    ax.text(zx0, zy0 + zs + 0.04, "native-resolution zoom", ha="left", va="bottom", fontsize=LAB, color=NAT)
+    crop_panel(zi, zx0, NAT, "native crop", NAT)  # centred label, wording as in the paper
     cbx = px + (zb[0] + zb[2]) * pw / iW
     # the window shown in the zoomed panels, boxed on the input and the global prediction (bold), and joined to the
     # native-crop panel by two straight zoom lines
@@ -364,9 +362,11 @@ def draw(out_dir):
     crop_panel(heat(I["zoom_S"]), ox, NAT, "native $p_S$", NAT, y=yb, sz=cz, below=True)
     seg(ax, [(xe2, ctr), (ox - 0.07, ctr), (ox - 0.07, yb + cz / 2), (ox - 0.02, yb + cz / 2)], c=NAT)
     yr = 1.70 - DC
-    rx_ = px + pw + 0.30  # leaves the global prediction at its right edge, clear of its label
-    seg(ax, [(px + pw, iy + ih - 0.02), (rx_, iy + ih - 0.02), (rx_, yr), (ox + cz / 2, yr), (ox + cz / 2, yt + cz + 0.01)],
-        c=LOW)
+    # p_L of the same window: from the top edge of the global prediction (right end) straight up; the crop's guide
+    # lines start at a candidate in the lower half (fig1_data), so they never cross it
+    rx_ = px + pw - 0.05
+    seg(ax, [(rx_, iy + ih), (rx_, yr), (ox + cz / 2, yr), (ox + cz / 2, yt + cz + 0.01)], c=LOW)
+    ax.text(px, iy + ih + 0.04, "global $p_L$", fontsize=LAB, color=LOW, va="bottom", ha="left")
     ax.text(ox + cz / 2 - 0.04, yr + 0.01, "global $p_L$, same window", ha="right", va="bottom", fontsize=SMALL,
             color=LOW)
     mx, my_, mr = ox + cz + 0.36, ctr, 0.125

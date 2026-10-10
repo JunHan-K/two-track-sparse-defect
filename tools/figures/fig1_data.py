@@ -106,7 +106,8 @@ def step_replay():
 def step_pick():
     """Inference example of the final model (test split by default, --split), chosen for visibility: among small defects (< Q33
     area) that the Global Sight Track misses (max p_L < 0.5) and the precision mode finds (max p >= 0.9), in images
-    with 7-13 defect components and no large defect inside its 128-px zoom window,
+    with 7-13 defect components, in the lower half of the image (figure layout), and no large defect inside its
+    128-px zoom window,
     the one with the highest local contrast
     |mean inside - mean of a 2-6 px ring| / std(ring). Rule set on 2026-10-10 after seeing the previous pick
     (largest recovered area: a defect hardly visible in the crop); written to fig1_data/pick.json."""
@@ -129,6 +130,8 @@ def step_pick():
             if m.sum() / g.size >= q33 or m.sum() < 80 or L[sl][m].max() >= 0.5 or P[sl][m].max() < 0.9:
                 continue
             cy_, cx_ = (sl[0].start + sl[0].stop) // 2, (sl[1].start + sl[1].stop) // 2
+            if cy_ < g.shape[0] / 2:  # lower half: the crop's guide lines then stay clear of the p_L connector above
+                continue
             win = lab[max(cy_ - 64, 0):cy_ + 64, max(cx_ - 64, 0):cx_ + 64]  # the zoomed window of Fig. 1 (c)
             ids_w = np.setdiff1d(np.unique(win), [0])
             n_win = ids_w.size

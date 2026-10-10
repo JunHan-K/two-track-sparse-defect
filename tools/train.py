@@ -1,4 +1,4 @@
-"""Train a model, or refine a trained checkpoint with confusion replay.
+"""Train a model, or refine a trained checkpoint with Sparse Defect Replay.
 
   python tools/train.py --config configs/vision/ours_stage1.yaml                 # two-view, size-aware training
   python tools/train.py --config configs/vision/ours.yaml \

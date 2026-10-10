@@ -16,7 +16,7 @@ finds them, together with many false alarms that the wider context would have ru
    in the BCE term of the main output. Stage heads on the four encoder stages are trained at the same time (the
    shallow two on small defects only).
 3. *Gated stage-head fusion.* A small gate driven by the deep stages (s3, s4) adds the shallow heads' small-defect
-   evidence (s1, s2) to the main logit; it starts as the identity and can only raise the score. The fused network is
+   evidence (s1, s2) to the main logit; it starts close to the identity and can only raise the score. The fused network is
    used in both inference tracks.
 
 **Sparse Defect Replay** (`configs/<dataset>/ours.yaml`): the trained model segments its training images at native
@@ -24,13 +24,13 @@ resolution and its false positives are counted per image; a 20-epoch refinement 
 defects together with random background crops, allocated to images in proportion to their false positives. Fusion
 alone finds more small defects but also adds false alarms on look-alike background; replay recovers the precision
 (VISION: small-defect AP<sup>3</sup> 23.4 -> 28.6, precision 87.9 -> 89.4). Replaying the false-positive locations
-themselves (`ablation/refine_own_false_positives.yaml`) also suppresses look-alike small defects and does not help.
+themselves (`ablation/refine_own_false_positives.yaml`) stays below Sparse Defect Replay.
 
 
 **Twin-Track SparSight Inference** (`tools/evaluate_zoom.py`): a *Global Sight Track* (L) segments the downscaled
 whole image and a *Native Sight Track* (S), the same network, segments native-resolution 384x384 crops.
 - *Precision mode*: S re-inspects only the 32 strongest candidate peaks of L; native evidence outside the support
-  of L is down-weighted.
+  of L is halved.
 - *Recall mode*: S tiles the whole image; the result is the maximum of L and S.
 
 ## Results
@@ -66,7 +66,7 @@ competitors, standard deviations, ablation) are produced by `tools/paper_tables.
 Latency: one A100, batch 1, end to end from the decoded image to the full-resolution map (resizing included), mean
 over 200 test images; GFLOPs count a multiply-add as 2. The precision mode costs 1.5x the FLOPs of SegFormer-B0
 but its latency is close to that of the larger models, because reading and handling the full-resolution image
-dominates it. On VISION the 22x larger SegFormer-B5 remains more accurate on large defects (overall AP, mIoU).
+dominates it. On VISION the 22x larger SegFormer-B5 remains more accurate overall (AP, mIoU).
 
 ## Setup
 
@@ -154,7 +154,7 @@ reliably).
   3 px of a defect is not a negative.
 - AUPRO up to FPR 0.3, mIoU (background, defect), pixel precision, and the target-level detection rate P<sub>d</sub>
   at threshold 0.5 (centroid distance < 3 px, as in the infrared small-target literature).
-- Thresholds are selected on validation (best F1) and applied unchanged to test, except P<sub>d</sub>; size groups
+- Thresholds are selected on validation (best pixel F1) and applied unchanged to test, except P<sub>d</sub>; size groups
   use the 33rd/66th percentiles of the training split for every method.
 
 Every run records its config, a run id, split hashes and the git commit; refinement refuses a replay file that

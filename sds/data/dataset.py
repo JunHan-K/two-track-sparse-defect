@@ -180,7 +180,7 @@ def size_weight_map(mask: np.ndarray, a_ref: float = 400.0, beta: float = 1.0, c
 class NativePointCropDataset(Dataset):
     """Native-resolution crops centred (with jitter) on given points of given images:
     entries = [{"row": split row, "cy": y, "cx": x}] in ORIGINAL pixel coordinates.
-    Used to replay the model's own native-resolution false positives and small defects (confusion replay)."""
+    Used by the replay refinement (small-defect crops and background crops at native resolution)."""
 
     def __init__(self, entries, crop=384, aug=None, jitter=None):
         self.entries = entries

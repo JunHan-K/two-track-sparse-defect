@@ -1,4 +1,4 @@
-"""Confusion-mining helpers shared by tools/mine_confusion.py and tools/train.py."""
+"""Replay-provenance helpers shared by tools/mine_native_fp.py and tools/train.py."""
 import numpy as np
 from scipy import ndimage
 
@@ -59,7 +59,7 @@ def check_replay_provenance(replay, cfg, init_checkpoint):
     """Raise if the replay set was not mined from `init_checkpoint` with the current data settings."""
     pv = replay.get("provenance")
     if pv is None:
-        raise SystemExit("replay file has no provenance; re-run tools/mine_confusion.py")
+        raise SystemExit("replay file has no provenance; re-run tools/mine_native_fp.py")
     data = cfg["data"]
     problems = []
     if pv["source_checkpoint_sha"] != file_sha256(init_checkpoint):

@@ -1,4 +1,4 @@
-"""Mine native-resolution false positives of the two-track model for confusion replay.
+"""Mine native-resolution false positives of the two-track model for Sparse Defect Replay.
 
   python tools/mine_native_fp.py --exp outputs/vision_ours_stage1 --out data/replay/vision/s42.json
 
