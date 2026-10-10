@@ -182,11 +182,12 @@ def draw(out_dir):
     seg(ax, [(cx_n + cs_n, cy_n + cs_n * 0.8), (1.43, cy_n + cs_n * 0.8), (1.43, ny - 0.12), (nx - 0.03, ny - 0.12)],
         c=NAT)
     # main head (logit z) -> gated logit fusion with the stage-head logits z1-z4 -> size-aware loss on the fused logit
-    hb_x, hb_w = xe + 0.08, 0.30
-    rbox(ax, hb_x, ny - 0.11, hb_w, 0.22, fc=NETF, ec=NETC)
-    ax.text(hb_x + hb_w / 2, ny, "head", ha="center", va="center", fontsize=SMALL, color=NETC, zorder=5)
+    hb_x, hb_w = xe + 0.08, 0.36
+    rbox(ax, hb_x, ny - 0.15, hb_w, 0.30, fc=NETF, ec=NETC)
+    ax.text(hb_x + hb_w / 2, ny, "main\nhead", ha="center", va="center", fontsize=SMALL, color=NETC, zorder=5,
+            linespacing=0.95)
     seg(ax, [(xe, ny), (hb_x - 0.01, ny)], c=NETC)
-    fb_x, fb_w = hb_x + hb_w + 0.13, 0.56
+    fb_x, fb_w = hb_x + hb_w + 0.12, 0.52
     rbox(ax, fb_x, ny - 0.15, fb_w, 0.30, fc="white", ec=NETC, lw=0.9)
     ax.text(fb_x + fb_w / 2, ny, "gated logit\nfusion", ha="center", va="center", fontsize=SMALL, color=NETC, zorder=5,
             linespacing=0.95)
@@ -196,7 +197,7 @@ def draw(out_dir):
     img(ax, wblend(T["native"], T["native_w"], T["native_g"]), tx, ty, ts, ts, ec=SIZE, lw=1.0)
     seg(ax, [(fb_x + fb_w, ny), (tx - 0.02, ny)], c=SIZE)
     ax.text(tx + ts, ty + ts + 0.04, "BCE$\\cdot w(a)$ + Dice", ha="right", va="bottom", fontsize=SMALL, color=SIZE)
-    ax.text(tx + ts, ty - 0.04, "small defects: $w\\leq\\!5\\times$", ha="right", va="top", fontsize=SMALL,
+    ax.text(tx + ts, ty - 0.04, "weight $w(a)\\leq\\!5\\times$", ha="right", va="top", fontsize=SMALL,
             color=SIZE)
     # stage heads, training only
     # stage heads (training only), right under the encoder stages: s1, s2 -> small-defect targets, s3, s4 -> all
@@ -218,7 +219,7 @@ def draw(out_dir):
     fx0, fy0, hx_ = sxs[3] + 0.10, ny - 0.40, fb_x + fb_w / 2
     seg(ax, [(fx0, fy0), (hx_, fy0), (hx_, ny - 0.16)], c=NETC, lw=0.8)
     ax.text(fx0 + 0.04, fy0 + 0.02, "$z_1$\u2013$z_4$", fontsize=SMALL, color=NETC, va="bottom", ha="left")
-    ax.text(hx_ - 0.05, fy0 + 0.15, "$z_{1,2}$: evidence\n$z_{3,4}$: gate", fontsize=SMALL, color=NETC, va="center",
+    ax.text(hx_ - 0.05, fy0 + 0.11, "$z_{1,2}$: evidence\n$z_{3,4}$: gate", fontsize=SMALL, color=NETC, va="center",
             ha="right", linespacing=1.0)
     ax.text(lx, sy + 0.17, "$s_{1,2}$: small defects", fontsize=SMALL, color=SIZE, va="center")
     ax.text(lx, sy + 0.01, "$s_{3,4}$: all defects", fontsize=SMALL, color=ALL, va="bottom")
