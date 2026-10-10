@@ -48,7 +48,7 @@ competitors, standard deviations, ablation) are produced by `tools/paper_tables.
 | U-Net (R34) | 24.4M | 250 | 52 ms | 81.1 | 1.2 | 4.2 | 54.4 |
 | SegFormer-B5 | 84.6M | 1120 | 102 ms | **89.2** | 3.9 | 10.0 | 86.0 |
 | Mask2Former (Swin-T) | 47.4M | 540 | 111 ms | 88.3 | 2.7 | 5.1 | 81.7 |
-| **Twin-SparSight, precision mode** | 3.8M | 125 | 123 ms | 88.9 | **9.0** | 28.6 | 90.8 |
+| **Twin-SparSight, precision mode** | 3.8M | 128 | 123 ms | 88.9 | **9.0** | 28.6 | 90.8 |
 | **Twin-SparSight, recall mode** | 3.8M | 310 | 330 ms | 88.3 | 8.8 | **30.8** | **92.8** |
 
 <p align="center"><img src="docs/accuracy_vs_compute.png" width="520" alt="small-defect AP vs compute on VISION"></p>
@@ -64,7 +64,7 @@ competitors, standard deviations, ablation) are produced by `tools/paper_tables.
 | **Twin-SparSight, precision mode** | 3.8M | **93.0** | **22.9** | **46.0** | **88.0** |
 
 Latency: one A100, batch 1, end to end from the decoded image to the full-resolution map (resizing included), mean
-over 200 test images; GFLOPs count a multiply-add as 2. The precision mode costs 1.4x the FLOPs of SegFormer-B0
+over 200 test images; GFLOPs count a multiply-add as 2. The precision mode costs 1.5x the FLOPs of SegFormer-B0
 but its latency is close to that of the larger models, because reading and handling the full-resolution image
 dominates it. On VISION the 22x larger SegFormer-B5 remains more accurate on large defects (overall AP, mIoU).
 
