@@ -210,8 +210,12 @@ def draw(out_dir):
         cc = cA if i < 2 else cB
         seg(ax, [(x, 2.57), (cc + (x - cc) * 0.2, sy + 0.02 + tb + 0.01)], c=SIZE if i < 2 else ALL, lw=0.7)
     lx = cB + tb / 2 + 0.06
-    ax.text(lx, sy + st, "stage heads, fused at inference", fontsize=SMALL, color=MUTED, va="top")
-    seg(ax, [(xe + 0.10 + hw_ / 2, sy + st + 0.03), (xe + 0.10 + hw_ / 2, ny - 0.16)], c=MUTED, lw=0.8)
+    ax.text(lx, sy + st, "stage-head targets", fontsize=SMALL, color=MUTED, va="top")
+    # the stage-head logits s1-s4 also enter the gated fusion of the main head (used at inference too)
+    fx0, fy0, hx_ = sxs[3] + 0.10, ny - 0.40, xe + 0.10 + hw_ / 2
+    seg(ax, [(fx0, fy0), (hx_, fy0), (hx_, ny - 0.16)], c=MUTED, lw=0.8)
+    ax.text((fx0 + hx_) / 2, fy0 - 0.02, "$s_1$\u2013$s_4$ logits", fontsize=SMALL, color=MUTED, va="top",
+            ha="center")
     ax.text(lx, sy + 0.17, "$s_{1,2}$: small defects", fontsize=SMALL, color=SIZE, va="center")
     ax.text(lx, sy + 0.01, "$s_{3,4}$: all defects", fontsize=SMALL, color=ALL, va="bottom")
 
@@ -363,6 +367,7 @@ def draw(out_dir):
     mx, my_, mr = ox + cz + 0.36, ctr, 0.125
     ring(ax, mx, my_, mr, c=INK, lw=0.8)
     ax.text(mx, my_, "max", ha="center", va="center", fontsize=SMALL, color=INK)
+    ax.text(mx, my_ - mr - 0.03, "pixel-wise, (4)", ha="center", va="top", fontsize=SMALL, color=MUTED)
     seg(ax, [(ox + cz, yt + cz / 2), (mx - mr * 0.75, my_ + mr * 0.66)], c=LOW)
     seg(ax, [(ox + cz, yb + cz / 2), (mx - mr * 0.75, my_ - mr * 0.66)], c=NAT)
     fx_ = mx + mr + 0.24
