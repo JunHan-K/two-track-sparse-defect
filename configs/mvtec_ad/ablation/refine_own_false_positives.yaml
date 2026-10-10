@@ -1,5 +1,5 @@
-# Ablation: refinement replaying random background.
-experiment_id: mvtec_abl_refine_random_background
+# Ablation: refinement replaying the model's own native false-positive locations (instead of random background).
+experiment_id: mvtec_abl_refine_own_false_positives
 seed: 42
 output_root: outputs
 data:
@@ -39,4 +39,4 @@ train:
     margin: 3
   zoom: {crop: 384, every: 2, batch: 8, p_defect: 0.5}
 refine: {enabled: true, init_checkpoint: outputs/mvtec_ours_stage1/best.pt, replay_file: data/replay/mvtec_ad/mvtec_ours_stage1.json,
-  replay_type: random, full_per_replay: 3, replay_batch_size: 8, match_budget: true}
+  replay_type: native_fp, full_per_replay: 3, replay_batch_size: 8, match_budget: true}

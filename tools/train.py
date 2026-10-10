@@ -57,8 +57,11 @@ def build_replay_loaders(cfg, seed):
     """(small-defect crop iterator, replayed-background crop iterator, sizes) or None without replay.
 
     The replay file (tools/mine_native_fp.py) holds points in ORIGINAL pixel coordinates: centres of small
-    defects ("pos") and of background regions per replay type ("native_fp" = the model's own native-resolution
-    false positives, "random" = random background, the control)."""
+    defects ("pos") and of background regions per replay type ("random" = random background locations, as many per
+    image as the model's own native false positives: Sparse Defect Replay; "native_fp" = those false-positive
+    locations themselves, the ablation). Ablation options: bg_support ("in": only false positives inside the
+    Global Sight support), bg_random_frac (share of random background in the background half), bg_loss_weight
+    (loss weight of the background crops)."""
     rc = cfg["refine"]
     if rc.get("replay_type", "none") == "none":
         return None
@@ -72,15 +75,34 @@ def build_replay_loaders(cfg, seed):
     mk = lambda es: [{"row": rows[e["id"]], "cy": e["cy"], "cx": e["cx"]} for e in es]  # noqa: E731
     bg_key = rc["replay_type"]
     assert bg_key in rep["bg"], f"{bg_key} not in replay file ({list(rep['bg'])})"
+    bg_entries = rep["bg"][bg_key]
+    if rc.get("bg_support"):
+        want = rc["bg_support"] == "in"
+        bg_entries = [e for e in bg_entries if bool(e.get("lowres_support")) == want]
     pos_ds = NativePointCropDataset(mk(rep["pos"]), crop=rep["crop"], aug=cfg["train"].get("aug"))
-    bg_ds = NativePointCropDataset(mk(rep["bg"][bg_key]), crop=rep["crop"], aug=cfg["train"].get("aug"))
+    bg_ds = NativePointCropDataset(mk(bg_entries), crop=rep["crop"], aug=cfg["train"].get("aug"))
     half = rc.get("replay_batch_size", cfg["train"]["batch_size"]) // 2
+    n_rand = int(round(half * rc.get("bg_random_frac", 0.0)))
+    rand_ds = NativePointCropDataset(mk(rep["bg"]["random"]), crop=rep["crop"], aug=cfg["train"].get("aug")) if n_rand else None
     # drop_last with fewer samples than a half batch would yield no batch -> infinite() would spin forever
     for name, ds in (("positive", pos_ds), ("background", bg_ds)):
         if len(ds) < half:
             raise SystemExit(f"replay {name} set has {len(ds)} crops < half batch {half}")
-    return (infinite(make_loader(pos_ds, half, True, cfg, seed + 1, drop_last=True)),
-            infinite(make_loader(bg_ds, half, True, cfg, seed + 2, drop_last=True)),
+    bg_it = infinite(make_loader(bg_ds, half - n_rand, True, cfg, seed + 2, drop_last=True))
+    rand_it = infinite(make_loader(rand_ds, n_rand, True, cfg, seed + 3, drop_last=True)) if n_rand else None
+    w = rc.get("bg_loss_weight", 1.0)
+
+    def bg_iter():
+        while True:
+            b = next(bg_it)
+            if w != 1.0:
+                b = dict(b, valid=b["valid"] * w)
+            if rand_it is not None:
+                r = next(rand_it)
+                b = {k: torch.cat([b[k], r[k]]) for k in ("image", "mask", "valid")}
+            yield b
+
+    return (infinite(make_loader(pos_ds, half, True, cfg, seed + 1, drop_last=True)), bg_iter(),
             len(pos_ds), len(bg_ds))
 
 

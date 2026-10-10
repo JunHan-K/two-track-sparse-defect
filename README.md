@@ -17,8 +17,11 @@ finds them, together with many false alarms that the wider context would have ru
    two on small defects only) and are **discarded at inference**: the deployed network is the plain MiT-B0
    segmenter.
 
-**Sparse Confusion Replay** (`configs/<dataset>/ours.yaml`): the trained model segments its own training images at
-native resolution; its false positives (print, vents, edges) and small defects are replayed in a 20-epoch refinement.
+**Sparse Defect Replay** (`configs/<dataset>/ours.yaml`): the trained model segments its training images at native
+resolution and its false positives are counted per image; a 20-epoch refinement then replays native crops of small
+defects together with random background crops, allocated to images in proportion to their false positives. Replaying
+the false-positive locations themselves (`ablation/refine_own_false_positives.yaml`) also suppresses look-alike small
+defects and does not help.
 
 
 **Twin-Track SparSight Inference** (`tools/evaluate_zoom.py`): a *Global Sight Track* (L) segments the downscaled
@@ -37,25 +40,25 @@ competitors, standard deviations, ablation) are produced by `tools/paper_tables.
 
 | Method | Params | GFLOPs | Latency | AP | AP<sub>s</sub> | AP<sub>s</sub><sup>3</sup> | AUPRO<sub>s</sub> |
 |---|---|---|---|---|---|---|---|
-| SegFormer-B0 | 3.7M | 87 | 58 ms | 86.0 | 1.5 | 3.1 | 83.0 |
-| SegFormer-B0, 1536<sup>2</sup> input | 3.7M | 290 | 120 ms | 87.3 | 3.7 | 10.7 | 84.8 |
-| U-Net (R34) | 24.4M | 250 | 58 ms | 81.1 | 1.2 | 4.2 | 54.5 |
-| SegFormer-B5 | 84.6M | 1120 | 97 ms | **89.1** | 3.9 | 9.8 | 86.0 |
-| Mask2Former (Swin-T) | 47.4M | 540 | 110 ms | 88.3 | 2.7 | 5.1 | 81.7 |
-| **Twin-SparSight, precision mode** | 3.8M | 125 | 116 ms | 88.2 | **5.6** | **18.9** | 90.2 |
-| **Twin-SparSight, recall mode** | 3.8M | 308 | 302 ms | 87.4 | 5.0 | 18.4 | **91.5** |
+| SegFormer-B0 | 3.7M | 87 | 62 ms | 86.3 | 1.5 | 3.1 | 83.0 |
+| SegFormer-B0, 1536<sup>2</sup> input | 3.7M | 290 | 123 ms | 87.3 | 3.8 | 10.8 | 84.8 |
+| U-Net (R34) | 24.4M | 250 | 55 ms | 81.1 | 1.2 | 4.2 | 54.4 |
+| SegFormer-B5 | 84.6M | 1120 | 98 ms | **89.2** | 3.9 | 10.0 | 86.0 |
+| Mask2Former (Swin-T) | 47.4M | 540 | 111 ms | 88.3 | 2.7 | 5.1 | 81.7 |
+| **Twin-SparSight, precision mode** | 3.8M | 125 | 121 ms | 88.9 | **6.5** | 22.3 | 89.9 |
+| **Twin-SparSight, recall mode** | 3.8M | 308 | 308 ms | 87.9 | 6.1 | **23.2** | **91.6** |
 
 <p align="center"><img src="docs/accuracy_vs_compute.png" width="520" alt="small-defect AP vs compute on VISION"></p>
 
 **MVTec AD** (Defect Spectrum protocol)
 
-| Method | Params | AP | AP<sub>s</sub> | AUPRO | mIoU |
+| Method | Params | AP | AP<sub>s</sub> | AP<sub>s</sub><sup>3</sup> | mIoU |
 |---|---|---|---|---|---|
-| SegFormer-B0 | 3.7M | 90.8 | 10.8 | 96.3 | 87.1 |
-| SegFormer-B5 | 84.6M | 92.5 | 12.9 | 96.6 | **88.0** |
-| HRNet-W18-small | 3.9M | 90.7 | 18.7 | 95.3 | 86.6 |
-| SuperSimpleNet | 33.7M | 88.6 | 12.7 | 96.3 | 83.7 |
-| **Twin-SparSight, precision mode** | 3.8M | **92.9** | **19.7** | **97.7** | 87.8 |
+| SegFormer-B0 | 3.7M | 90.8 | 10.8 | 22.9 | 87.1 |
+| SegFormer-B5 | 84.6M | 92.5 | 12.9 | 25.3 | **88.0** |
+| HRNet-W18-small | 3.9M | 90.7 | 18.7 | 33.9 | 86.6 |
+| SuperSimpleNet | 33.7M | 88.6 | 12.7 | 24.3 | 83.7 |
+| **Twin-SparSight, precision mode** | 3.8M | **93.0** | **19.2** | **40.0** | 87.8 |
 
 Latency: one A100, batch 1, end to end from the decoded image to the full-resolution map (resizing included), mean
 over 200 test images; GFLOPs count a multiply-add as 2. The precision mode costs 1.4x the FLOPs of SegFormer-B0
@@ -88,7 +91,7 @@ the Defect Spectrum protocol: 5 defect images per defect type for training, 20% 
 ```bash
 # 1) two-view, size-aware training
 python tools/train.py --config configs/vision/ours_stage1.yaml
-# 2) mine the model's own native-resolution false positives, refine with confusion replay
+# 2) count the model's native-resolution false positives per image, refine with Sparse Defect Replay
 python tools/mine_native_fp.py --exp outputs/vision_ours_stage1 --out data/replay/vision/vision_ours_stage1.json
 python tools/train.py --config configs/vision/ours.yaml
 # 3) evaluate both operating points (validation selects the threshold; --test adds the test split)
@@ -107,7 +110,7 @@ in the config paths (experiment ids start with `mvtec_`).
 ```bash
 bash scripts/reproduce.sh vision ours           # and: mvtec_ad ours
 bash scripts/reproduce.sh vision baselines      # Table II competitors (MVTec AD: Table I)
-bash scripts/reproduce.sh vision ablation       # Table III (validation split)
+bash scripts/reproduce.sh vision ablation       # Table III
 python tools/measure_modes.py                   # end-to-end latency of every method on one GPU
 python tools/paper_tables.py --split test       # tables -> outputs/paper/tables/
 python tools/figures/fig3_tradeoff.py --split test
@@ -117,21 +120,23 @@ python tools/analysis/bootstrap_small.py        # paired bootstrap of the small-
 
 | Config | Paper |
 |---|---|
-| `configs/<ds>/ours_stage1.yaml`, `ours.yaml` | ours (before / after confusion replay) |
+| `configs/<ds>/ours_stage1.yaml`, `ours.yaml` | ours (before / after Sparse Defect Replay) |
 | `configs/<ds>/baselines/*.yaml` | SegFormer-B0/B5, B0 at 1536^2, U-Net, DeepLabV3+, HRNet-W18-small, BiSeNetV2, Mask2Former, DNANet, MSHNet |
 | `tools/external/magnet_seg.py`, `supersimplenet_seg.py` | MagNet (VISION), SuperSimpleNet (MVTec AD), with the authors' code (SuperSimpleNet runs in the environment of its repository: PyTorch Lightning, anomalib) |
-| `configs/<ds>/ablation/*.yaml` | ablation (two views, stage heads, size-aware supervision, inference-time fusion, refinement controls, update-matched B0) |
+| `configs/<ds>/ablation/*.yaml` | ablation (two views, stage heads, size-aware supervision, inference-time fusion, refinement controls and replay variants, update-matched B0) |
 | `configs/vision/diagnostics/*.yaml` | small-target models with their authors' recipes and on native crops |
 | `tools/external/irstd_sanity.py` | DNANet / MSHNet reproduced on their own benchmarks (NUAA-SIRST, IRSTD-1k) |
 
-All competitors use the same splits, input size, augmentation and evaluator. Models trained with their own loss
+Except for the explicit resolution controls, all competitors use the same splits, base input size, augmentation and
+evaluator. Models trained with their own loss
 (BiSeNetV2, Mask2Former, DNANet, MSHNet) treat the letterbox padding as background, as in their reference code; the
 others ignore it. Training budget: two-view training takes 1.24x the optimizer updates of a whole-image baseline and,
 with the 20-epoch refinement, 1.6x in total; `ablation/b0_update_matched.yaml` and the equal-step refinement controls
 (`ablation/refine_*.yaml`) separate these extra updates from the method. Changes to the reference
 implementations are limited to what the data require and are listed in the paper (SuperSimpleNet samples defect
 images only; MagNet uses per-image scales up to the native resolution; Mask2Former is re-headed for two classes;
-the small-target models and MagNet are reported with the BCE+Dice recipe because their own losses collapse).
+the small-target models and MagNet are reported with the BCE+Dice recipe because their own objectives did not train
+reliably).
 
 ## Evaluation protocol (`sds/metrics.py`)
 
@@ -141,10 +146,10 @@ the small-target models and MagNet are reported with the BCE+Dice recipe because
   8,192-bin logit grid.
 - Boundary-tolerant AP: a defect pixel is scored by the maximum prediction within 3 px, and background within
   3 px of a defect is not a negative.
-- AUPRO up to FPR 0.3, mIoU (background, defect), target-level P<sub>d</sub>/F<sub>a</sub> at threshold 0.5
-  (centroid distance < 3 px, as in the infrared small-target literature).
-- Thresholds are selected on validation (best F1) and applied unchanged to test; size groups use the 33rd/66th
-  percentiles of the training split for every method.
+- AUPRO up to FPR 0.3, mIoU (background, defect), pixel precision, and the target-level detection rate P<sub>d</sub>
+  at threshold 0.5 (centroid distance < 3 px, as in the infrared small-target literature).
+- Thresholds are selected on validation (best F1) and applied unchanged to test, except P<sub>d</sub>; size groups
+  use the 33rd/66th percentiles of the training split for every method.
 
 Every run records its config, a run id, split hashes and the git commit; refinement refuses a replay file that
 was not mined from its init checkpoint, and an existing output directory is never overwritten.

@@ -1,5 +1,5 @@
-# Ours (final): step 1 + 20-epoch Sparse Defect Replay (small-defect crops + random background crops, allocated by native false positives).
-experiment_id: vision_ours
+# Ablation (replay variant): half own false positives, half random background.
+experiment_id: vision_abl_refine_fp_half_random
 seed: 42
 output_root: outputs
 data:
@@ -39,4 +39,4 @@ train:
     margin: 3
   zoom: {crop: 384, every: 2, batch: 8, p_defect: 0.5}
 refine: {enabled: true, init_checkpoint: outputs/vision_ours_stage1/best.pt, replay_file: data/replay/vision/vision_ours_stage1.json,
-  replay_type: random, full_per_replay: 3, replay_batch_size: 8, match_budget: true}
+  replay_type: native_fp, full_per_replay: 3, replay_batch_size: 8, match_budget: true, bg_random_frac: 0.5}
