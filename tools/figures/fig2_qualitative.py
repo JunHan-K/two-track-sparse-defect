@@ -290,12 +290,12 @@ def draw_mixed(split, window, min_window, zoom, out_dir):
     print("rows:", [(d, l, e["row"]["id"], round(e["cb"], 2), round(e["cp"], 2), round(e["cr"], 2)) for d, l, e in sel])
     ncol, nrow = 1 + len(PRESETS["vision"]["columns"]), len(sel)
     # drawn at its printed size (0.84 x 7.16 in), so the type is not scaled down
-    FW, L, Rm, T, B, gap = 6.0, 0.30, 0.40, 0.17, 0.02, 0.03
+    FW, L, Rm, T, B, gap = 6.0, 0.30, 0.40, 0.17, 0.02, 0.05
     pw = (FW - L - Rm - gap * (ncol - 1)) / ncol
     FH = T + B + nrow * pw + gap * (nrow - 1)
     fig, axes = plt.subplots(nrow, ncol, figsize=(FW, FH), squeeze=False)
     plt.subplots_adjust(left=L / FW, right=1 - Rm / FW, top=1 - T / FH, bottom=B / FH, wspace=gap / pw, hspace=gap / pw)
-    short = ["SegFormer-B0", "B0, $1536^2$", "U-Net", "SegFormer-B5", "Mask2Former", "MagNet", "Ours (P)", "Ours (R)"]
+    short = ["B0", "B0, $1536^2$", "U-Net", "B5", "Mask2Former", "MagNet", "Ours (P)", "Ours (R)"]
     im_obj = None
     for i, (ds, label, ent) in enumerate(sel):
         cols = PRESETS[ds]["columns"]
