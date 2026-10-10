@@ -157,7 +157,7 @@ ABL_B = [
     ("extra training only", "vision_abl_refine_no_replay"),
     ("own false-pos.\\ replay", "vision_abl_refine_own_false_positives"),
     ("Sparse Defect Replay", "vision_abl_replay_unfused"),
-    ("\\quad + head fusion (\\textbf{final})", FINAL_VISION),
+    ("\\textbf{Twin-SparSight}", FINAL_VISION),
 ]
 ABL_COLS = [("AP$_s$", "defect_small_ap", 0, 100, 1),
             ("AP$_s^{3}$", "defect_small_ap", 3, 100, 1), ("AUPRO$_s$", "aupro_small", 0, 100, 1),
@@ -182,6 +182,8 @@ def ablation_bodies(split):
         a.append(" & ".join([note] + cells) + r"\\")
         plain.append(f"A {''.join('x' if f else '-' for f in flags)} {note[:30]:30s} [{exp}] " + " ".join(cells))
     for name, exp in ABL_B:
+        if exp == FINAL_VISION:  # the final model (fused step 1 + replay) below a thin rule; rows above: unfused
+            b.append(r"\cmidrule(lr){1-6}")
         cells = cells_of(exp, rk_b)
         b.append(" & ".join([name] + cells) + r"\\")
         plain.append(f"B {name:30s} [{exp}] " + " ".join(cells))
