@@ -180,20 +180,22 @@ def draw(out_dir):
     seg(ax, [(wx + ww, wy + wh / 2), (nx - 0.03, wy + wh / 2)], c=LOW)
     seg(ax, [(cx_n + cs_n, cy_n + cs_n * 0.8), (1.43, cy_n + cs_n * 0.8), (1.43, ny - 0.12), (nx - 0.03, ny - 0.12)],
         c=NAT)
-    # main head -> size-aware weighted target
-    # main head with the gated fusion of the stage heads (s1, s2 evidence, s3, s4 gate), used at inference
-    hw_ = 0.46
-    rbox(ax, xe + 0.10, ny - 0.15, hw_, 0.30, fc=NETF, ec=LOW)
-    ax.text(xe + 0.10 + hw_ / 2, ny, "head\n+ fusion", ha="center", va="center", fontsize=SMALL, color=LOW, zorder=5,
+    # main head (logit z) -> gated logit fusion with the stage-head logits z1-z4 -> size-aware loss on the fused logit
+    hb_x, hb_w = xe + 0.08, 0.30
+    rbox(ax, hb_x, ny - 0.11, hb_w, 0.22, fc=NETF, ec=LOW)
+    ax.text(hb_x + hb_w / 2, ny, "head", ha="center", va="center", fontsize=SMALL, color=LOW, zorder=5)
+    seg(ax, [(xe, ny), (hb_x - 0.01, ny)], c=LOW)
+    fb_x, fb_w = hb_x + hb_w + 0.13, 0.56
+    rbox(ax, fb_x, ny - 0.15, fb_w, 0.30, fc="white", ec=LOW, lw=0.9)
+    ax.text(fb_x + fb_w / 2, ny, "gated logit\nfusion", ha="center", va="center", fontsize=SMALL, color=LOW, zorder=5,
             linespacing=0.95)
-    seg(ax, [(xe, ny), (xe + 0.10, ny)], c=LOW)
-    tx, ty, ts = 3.63, 2.44, 0.72
+    seg(ax, [(hb_x + hb_w, ny), (fb_x - 0.01, ny)], c=LOW)
+    ax.text(hb_x + hb_w + 0.065, ny + 0.03, "$z$", ha="center", va="bottom", fontsize=SMALL, color=LOW)
+    tx, ty, ts = 3.70, 2.44, 0.66
     img(ax, wblend(T["native"], T["native_w"], T["native_g"]), tx, ty, ts, ts, ec=SIZE, lw=1.0)
-    seg(ax, [(xe + 0.10 + hw_, ny), (tx - 0.02, ny)], c=SIZE)
-    ax.text((xe + 0.10 + hw_ + tx) / 2, ny + 0.04, "weighted\nBCE + Dice", fontsize=SMALL, color=SIZE, ha="center",
-            va="bottom", linespacing=1.0)
-    ax.text(tx + ts / 2, ty + ts + 0.04, "size-aware weight", ha="center", va="bottom", fontsize=LAB, color=SIZE)
-    ax.text(tx + ts / 2, ty - 0.04, "small defects $\\leq\\!5\\times$", ha="center", va="top", fontsize=SMALL,
+    seg(ax, [(fb_x + fb_w, ny), (tx - 0.02, ny)], c=SIZE)
+    ax.text(tx + ts, ty + ts + 0.04, "BCE$\\cdot w(a)$ + Dice", ha="right", va="bottom", fontsize=SMALL, color=SIZE)
+    ax.text(tx + ts, ty - 0.04, "small defects: $w\\leq\\!5\\times$", ha="right", va="top", fontsize=SMALL,
             color=SIZE)
     # stage heads, training only
     # stage heads (training only), right under the encoder stages: s1, s2 -> small-defect targets, s3, s4 -> all
@@ -211,11 +213,10 @@ def draw(out_dir):
         seg(ax, [(x, 2.57), (cc + (x - cc) * 0.2, sy + 0.02 + tb + 0.01)], c=SIZE if i < 2 else ALL, lw=0.7)
     lx = cB + tb / 2 + 0.06
     ax.text(lx, sy + st, "stage-head targets", fontsize=SMALL, color=MUTED, va="top")
-    # the stage-head logits s1-s4 also enter the gated fusion of the main head (used at inference too)
-    fx0, fy0, hx_ = sxs[3] + 0.10, ny - 0.40, xe + 0.10 + hw_ / 2
-    seg(ax, [(fx0, fy0), (hx_, fy0), (hx_, ny - 0.16)], c=MUTED, lw=0.8)
-    ax.text((fx0 + hx_) / 2, fy0 - 0.02, "$s_1$\u2013$s_4$ logits", fontsize=SMALL, color=MUTED, va="top",
-            ha="center")
+    # the stage-head logits z1-z4 enter the gated fusion (used at inference too)
+    fx0, fy0, hx_ = sxs[3] + 0.10, ny - 0.40, fb_x + fb_w / 2
+    seg(ax, [(fx0, fy0), (hx_, fy0), (hx_, ny - 0.16)], c=LOW, lw=0.8)
+    ax.text(fx0 + 0.04, fy0 - 0.02, "stage logits $z_1$\u2013$z_4$", fontsize=SMALL, color=LOW, va="top", ha="left")
     ax.text(lx, sy + 0.17, "$s_{1,2}$: small defects", fontsize=SMALL, color=SIZE, va="center")
     ax.text(lx, sy + 0.01, "$s_{3,4}$: all defects", fontsize=SMALL, color=ALL, va="bottom")
 
@@ -243,7 +244,7 @@ def draw(out_dir):
         ax.add_patch(Rectangle((rx + fx * s_ - 0.03, ry + rh - fy * s_ - 0.03), 0.06, 0.06, fc="none", ec=REP, lw=0.7,
                                zorder=6))
     ax.text(rx, ry + rh + 0.04, "false positives", fontsize=LAB, color=REP, va="bottom")
-    ax.text(rx + rwid / 2, ry - 0.03, f"FP count = {k_fp}", fontsize=LAB, color=REP, ha="center", va="top")
+    ax.text(rx + rwid / 2, ry - 0.03, "count FPs per image", fontsize=SMALL, color=REP, ha="center", va="top")
     # the two crop sets, each framed as one group
     cs, gp, gx0 = 0.30, 0.03, 5.86
     bgy, psy = 3.00, 2.50
@@ -256,7 +257,7 @@ def draw(out_dir):
     ps_x1 = gx0 + 2 * cs + gp + pad
     rbox(ax, gx0 - pad, bgy - pad, bg_x1 - gx0 + pad, cs + 2 * pad, fc="none", ec=REP, lw=0.9, r=0.03, z=5)
     rbox(ax, gx0 - pad, psy - pad, ps_x1 - gx0 + pad, cs + 2 * pad, fc="none", ec=SIZE, lw=0.9, r=0.03, z=5)
-    ax.text(bg_x1, bgy + cs + pad + 0.03, "background $\\propto$ FP count", fontsize=SMALL, color=REP, va="bottom",
+    ax.text(bg_x1, bgy + cs + pad + 0.03, "random background crops", fontsize=SMALL, color=REP, va="bottom",
             ha="right")
     ax.text(ps_x1 + 0.05, psy + cs / 2, "small-\ndefect\ncrops", fontsize=SMALL, color=SIZE, va="center",
             linespacing=1.0)
@@ -266,7 +267,7 @@ def draw(out_dir):
     rbox(ax, 4.57, 1.98, 2.49, 0.36, fc="white", ec=INK, lw=0.8)
     ax.text(5.815, 2.25, "replay batch: $\\frac{1}{2}$ small-defect + $\\frac{1}{2}$ background crops", ha="center",
             va="center", fontsize=SMALL, color=INK)
-    ax.text(5.815, 2.08, "after every 3rd whole-image batch; 20 epochs", ha="center", va="center", fontsize=SMALL,
+    ax.text(5.815, 2.08, "confused images sampled more often, not at FP locations", ha="center", va="center", fontsize=SMALL,
             color=INK)
     seg(ax, [((gx0 - pad + ps_x1) / 2, psy - pad), ((gx0 - pad + ps_x1) / 2, 2.35)], c=SIZE)
     seg(ax, [(bg_x1, bgy + cs / 2), (7.03, bgy + cs / 2), (7.03, 2.35)], c=REP)
@@ -293,7 +294,7 @@ def draw(out_dir):
     gx0n = ix + iw + 0.36
     xe = net(ax, gx0n, ly, 0.5, LOW, label=False, stages=False)
     seg(ax, [(ix + iw, ly), (gx0n - 0.02, ly)], c=LOW)
-    ax.text((gx0n + xe) / 2, iy - 0.05, "Global Sight\nTrack (L)", fontsize=LAB, color=LOW, ha="center", va="top",
+    ax.text((gx0n + xe) / 2, iy - 0.05, "Global Sight (L)\nsame MiT-B0", fontsize=LAB, color=LOW, ha="center", va="top",
             linespacing=1.0)
     # every prediction is drawn as in Fig. 2: probability map (inferno), ground truth in green
     px, pw = xe + 0.25, iw
@@ -307,7 +308,7 @@ def draw(out_dir):
     contour(ax, I["L"] > 0.5, px, iy, pw, ih, c="#ffd23f", lw=0.9)  # predicted regions, outlined like the GT
     seg(ax, [(xe, ly), (px - 0.02, ly)], c=LOW)
     ax.text(px, iy + ih + 0.04, "global prediction $p_L$", fontsize=LAB, color=LOW, va="bottom")
-    ax.text(px + pw / 2, iy - 0.04, "thin boxes: candidates\nbold box: zoomed window", fontsize=SMALL,
+    ax.text(px + pw / 2, iy - 0.04, "thin: candidates\nbold: zoomed", fontsize=SMALL,
             color=MUTED, ha="center", va="top", linespacing=1.0)
     b = 384 * 900 / I["full_hw"][1] * pw / iW
     for cx_, cy_, _ in I["cand"]:  # all candidates; thin, so the predicted outlines stay visible
@@ -331,7 +332,8 @@ def draw(out_dir):
             return
         ax.text(x + sz / 2, y + sz + 0.04, lab, ha="center", va="bottom", fontsize=LAB, color=col)
 
-    crop_panel(zi, zx0, NAT, "native crop (zoom)", NAT)
+    crop_panel(zi, zx0, NAT, "", NAT)
+    ax.text(zx0, zy0 + zs + 0.04, "native-resolution zoom", ha="left", va="bottom", fontsize=LAB, color=NAT)
     cbx = px + (zb[0] + zb[2]) * pw / iW
     # the window shown in the zoomed panels, boxed on the input and the global prediction (bold), and joined to the
     # native-crop panel by two straight zoom lines
@@ -346,9 +348,9 @@ def draw(out_dir):
     bx1, by0, by1 = wbox(px, pw)
     for yb_, yz_ in ((by1, zy0 + zs), (by0, zy0)):
         ax.plot([bx1, zx0], [yb_, yz_], color=NAT, lw=0.7, zorder=8)
-    xe2 = net(ax, zx0 + zs + 0.24, zy0 + zs / 2, 0.5, NAT, label=False, stages=False)
+    xe2 = net(ax, zx0 + zs + 0.24, zy0 + zs / 2, 0.5, LOW, label=False, stages=False)  # same network icon/colour
     seg(ax, [(zx0 + zs, zy0 + zs / 2), (zx0 + zs + 0.22, zy0 + zs / 2)], c=NAT)
-    ax.text((zx0 + zs + 0.24 + xe2) / 2, iy - 0.05, "Native Sight\nTrack (S)", fontsize=LAB, color=NAT, ha="center",
+    ax.text((zx0 + zs + 0.24 + xe2) / 2, iy - 0.05, "Native Sight (S)\nsame MiT-B0", fontsize=LAB, color=NAT, ha="center",
             va="top", linespacing=1.0)
     # the merge (Eq. 3) on the same window: global p_L (top, from the global prediction) and native p_S (bottom)
     cz = (zs - 0.04) / 2
@@ -383,9 +385,9 @@ def draw(out_dir):
     for cx_, cy_, _ in I["cand"]:
         clipped_box(ax, modes_x + cx_ * mt / iW - t / 2, my + th - cy_ * mt / iW - t / 2, t, t, modes_x, my, mt, th,
                     ec=NAT, lw=0.7, zorder=7)
-    ax.text(modes_x + mt + 0.06, my + th / 2, "precision mode: candidates only", fontsize=SMALL, color=NAT,
+    ax.text(modes_x + mt + 0.06, my + th / 2, "precision mode: selective, candidate crops", fontsize=SMALL, color=NAT,
             va="center")
-    rt = ax.text(ix + row_w, my + th / 2, "recall mode: every native tile", fontsize=SMALL, color=NAT,
+    rt = ax.text(ix + row_w, my + th / 2, "recall mode: dense, all native tiles", fontsize=SMALL, color=NAT,
                  va="center", ha="right")
     bb = rt.get_window_extent(renderer=fig.canvas.get_renderer()).transformed(ax.transData.inverted())
     rx2 = bb.x0 - 0.06 - mt
