@@ -221,7 +221,7 @@ def draw(out_dir):
     pe, pg = fb_x + fb_w * 0.28, fb_x + fb_w * 0.72
     seg(ax, [(fx0, ye), (pe, ye), (pe, ny - 0.16)], c=NETC, lw=1.0)
     seg(ax, [(fx0, yg), (pg, yg), (pg, ny - 0.16)], c=NETC, lw=1.0)
-    ax.text(xe + 0.03, ye + 0.01, "$z_1, z_2$", fontsize=SMALL, color=NETC, va="bottom", ha="left")
+    ax.text(xe + 0.03, ye + 0.01, "$z_1, z_2$ (evidence)", fontsize=SMALL, color=NETC, va="bottom", ha="left")
     ax.text(xe + 0.03, yg - 0.01, "$z_3, z_4$ (gate)", fontsize=SMALL, color=NETC, va="top", ha="left")
     ax.text(lx, sy + 0.17, "$s_{1,2}$: small defects", fontsize=SMALL, color=SIZE, va="center")
     ax.text(lx, sy + 0.01, "$s_{3,4}$: all defects", fontsize=SMALL, color=ALL, va="bottom")
