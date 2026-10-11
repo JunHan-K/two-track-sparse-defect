@@ -267,9 +267,9 @@ def draw(out_dir):
     seg(ax, [(rx + rwid, bgy + cs / 2), (gx0 - pad - 0.01, bgy + cs / 2)], c=REP)
     seg(ax, [(rx + rwid, psy + cs / 2), (gx0 - pad - 0.01, psy + cs / 2)], c=SIZE)
     rbox(ax, 4.57, 1.98, 2.49, 0.36, fc="white", ec=INK, lw=0.8)
-    ax.text(5.815, 2.25, "replay batch: $\\frac{1}{2}$ small-defect + $\\frac{1}{2}$ background crops", ha="center",
+    ax.text(5.815, 2.25, "replay batch: half small defects, half background", ha="center",
             va="center", fontsize=SMALL, color=INK)
-    ax.text(5.815, 2.08, "confused images sampled more often, not at FP locations", ha="center", va="center", fontsize=SMALL,
+    ax.text(5.815, 2.08, "more background from confused images", ha="center", va="center", fontsize=SMALL,
             color=INK)
     seg(ax, [((gx0 - pad + ps_x1) / 2, psy - pad), ((gx0 - pad + ps_x1) / 2, 2.35)], c=SIZE)
     seg(ax, [(bg_x1, bgy + cs / 2), (7.03, bgy + cs / 2), (7.03, 2.35)], c=REP)
@@ -365,7 +365,7 @@ def draw(out_dir):
     # lines start at a candidate in the lower half (fig1_data), so they never cross it
     rx_ = px + pw - 0.05
     seg(ax, [(rx_, iy + ih), (rx_, yr), (ox + cz / 2, yr), (ox + cz / 2, yt + cz + 0.01)], c=LOW)
-    ax.text(px, iy + ih + 0.04, "global $p_L$", fontsize=LAB, color=LOW, va="bottom", ha="left")
+    ax.text(rx_ - 0.04, iy + ih + 0.04, "global $p_L$", fontsize=LAB, color=LOW, va="bottom", ha="right")  # next to its arrow
     ax.text(ox + cz / 2 - 0.04, yr + 0.01, "global $p_L$, same window", ha="right", va="bottom", fontsize=SMALL,
             color=LOW)
     mx, my_, mr = ox + cz + 0.36, ctr, 0.125
