@@ -131,7 +131,7 @@ python tools/analysis/bootstrap_small.py --tol 3   # paired bootstrap of the sma
 | `tools/external/magnet_seg.py`, `supersimplenet_seg.py` | MagNet (VISION), SuperSimpleNet (MVTec AD), with the authors' code (SuperSimpleNet runs in the environment of its repository: PyTorch Lightning, anomalib) |
 | `configs/<ds>/ablation/*.yaml` | ablation (two views, stage heads, size-aware supervision, stage-head fusion; refinement controls and replay variants on the unfused model, `refine_unfused.yaml` = Sparse Defect Replay without fusion; update-matched B0) |
 | `configs/vision/diagnostics/*.yaml` | small-target models with their authors' recipes and on native crops |
-| `tools/external/irstd_sanity.py` | DNANet / MSHNet reproduced on their own benchmarks (NUAA-SIRST, IRSTD-1k) |
+| `tools/external/irstd_sanity.py` | DNANet / MSHNet reproduced on their own benchmarks: DNANet 74.8 mIoU on NUAA-SIRST (published 77.5), MSHNet 67.8 on IRSTD-1k (published 67.2) |
 
 Except for the explicit resolution controls, all competitors use the same splits, base input size, augmentation and
 evaluator. Models trained with their own loss
