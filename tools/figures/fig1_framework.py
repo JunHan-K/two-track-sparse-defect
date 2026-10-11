@@ -212,17 +212,18 @@ def draw(out_dir):
             ec=c, lw=0.8)
     for i, x in enumerate(sxs):
         cc = cA if i < 2 else cB
-        seg(ax, [(x, 2.57), (cc + (x - cc) * 0.2, sy + 0.02 + tb + 0.01)], c=SIZE if i < 2 else ALL, lw=0.7)
+        seg(ax, [(x, 2.55), (cc + (x - cc) * 0.2, sy + 0.02 + tb + 0.01)], c=SIZE if i < 2 else ALL, lw=0.7)
     lx = cB + tb / 2 + 0.06
-    ax.text(lx, sy + st, "stage-head targets", fontsize=SMALL, color=MUTED, va="top")
+    ax.text(lx, sy + st, "stage heads", fontsize=SMALL, color=MUTED, va="top")
     # the stage-head logits z1-z4 enter the gated fusion (used at inference too)
     # two explicit inputs of the fusion box: z1,z2 = evidence (left port), z3,z4 = gate (right port); z enters from the left
-    fx0, ye, yg = sxs[3] + 0.10, ny - 0.40, ny - 0.50
+    # the two stage-head pairs feed the fusion box directly (colours as their labels below): s1,2 (orange) -> left port,
+    # s3,4 (brown, gate) -> right port; each line leaves its thumbnail's top-right corner, clear of the stage arrows
     pe, pg = fb_x + fb_w * 0.28, fb_x + fb_w * 0.72
-    seg(ax, [(fx0, ye), (pe, ye), (pe, ny - 0.16)], c=NETC, lw=1.0)
-    seg(ax, [(fx0, yg), (pg, yg), (pg, ny - 0.16)], c=NETC, lw=1.0)
-    ax.text(xe + 0.03, ye + 0.01, "$z_1, z_2$ (evidence)", fontsize=SMALL, color=NETC, va="bottom", ha="left")
-    ax.text(xe + 0.03, yg - 0.01, "$z_3, z_4$ (gate)", fontsize=SMALL, color=NETC, va="top", ha="left")
+    ye, yg = 2.645, 2.45
+    xa, xb = cA + tb / 2 - 0.01, cB + tb / 2 - 0.01
+    seg(ax, [(xa, sy + 0.02 + tb), (xa, ye), (pe, ye), (pe, ny - 0.16)], c=SIZE, lw=1.0)
+    seg(ax, [(xb, sy + 0.02 + tb), (xb, yg), (pg, yg), (pg, ny - 0.16)], c=ALL, lw=1.0)
     ax.text(lx, sy + 0.17, "$s_{1,2}$: small defects", fontsize=SMALL, color=SIZE, va="center")
     ax.text(lx, sy + 0.01, "$s_{3,4}$: all defects", fontsize=SMALL, color=ALL, va="bottom")
 
