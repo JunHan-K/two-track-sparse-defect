@@ -203,7 +203,7 @@ def draw(out_dir):
     # stage heads (training only), right under the encoder stages: s1, s2 -> small-defect targets, s3, s4 -> all
     sy, st = 1.98, 0.34
     sxs = [nx + 0.17 * 0.95 * i + 0.055 * 0.95 for i in range(4)]  # stage centres (as drawn by net())
-    tb = 0.24  # thumbnail side; centred under (s1, s2) and (s3, s4); straight arrows converge on each
+    tb = 0.27  # thumbnail side; centred under (s1, s2) and (s3, s4); straight arrows converge on each
     cA, cB = (sxs[0] + sxs[1]) / 2, (sxs[2] + sxs[3]) / 2
     # each thumbnail shows only its own target mask, solid in the frame colour, over a faded crop
     faded = np.repeat((255 - (255 - T["native"].astype(np.float32).mean(2, keepdims=True)) * 0.3), 3, 2)
@@ -219,18 +219,18 @@ def draw(out_dir):
     # two explicit inputs of the fusion box: z1,z2 = evidence (left port), z3,z4 = gate (right port); z enters from the left
     # the two stage-head pairs feed the fusion box directly (colours as their labels below): s1,2 (orange) -> left port,
     # s3,4 (brown, gate) -> right port; each line leaves its thumbnail's top-right corner, clear of the stage arrows
-    pe, pg = fb_x + fb_w * 0.28, fb_x + fb_w * 0.72
-    ye, yg = 2.645, 2.45
-    xa = (cA + tb / 2 + cB - tb / 2) / 2  # middle of the gap between the two thumbnails
-    xb = cB + tb / 2 + 0.03
-    seg(ax, [(xa, sy + 0.02 + tb / 2), (xa, ye), (pe, ye), (pe, ny - 0.16)], c=SIZE, lw=0.8)
-    seg(ax, [(cA + tb / 2, sy + 0.02 + tb / 2), (xa, sy + 0.02 + tb / 2)], c=SIZE, lw=0.8, head=False)
-    seg(ax, [(cB + tb / 2, sy + 0.02 + tb * 0.75), (xb, sy + 0.02 + tb * 0.75), (xb, yg), (pg, yg), (pg, ny - 0.16)],
-        c=ALL, lw=0.8)
-    ax.text(pe - 0.03, (ye + ny - 0.16) / 2, "evidence", fontsize=SMALL, color=SIZE, ha="right", va="center")
-    ax.text(pg + 0.03, (yg + ny - 0.16) / 2, "gate", fontsize=SMALL, color=ALL, ha="left", va="center")
-    ax.text(lx, sy + 0.17, "$s_{1,2}$: small defects", fontsize=SMALL, color=SIZE, va="center")
-    ax.text(lx, sy + 0.01, "$s_{3,4}$: all defects", fontsize=SMALL, color=ALL, va="bottom")
+
+    t12 = ax.text(lx, sy + 0.17, "$s_{1,2}$: small defects", fontsize=SMALL, color=SIZE, va="center")
+    t34 = ax.text(lx, sy + 0.06, "$s_{3,4}$: all defects", fontsize=SMALL, color=ALL, va="center")
+    # the stage-head pairs feed the fusion box, each line leaving the right end of its label:
+    # s1,2 -> evidence (left port), s3,4 -> gate (right port)
+    rnd = fig.canvas.get_renderer()
+    pe, pg = fb_x + fb_w * 0.2, fb_x + fb_w * 0.8
+    for t, px_, c, lab in ((t12, pe, SIZE, "evidence"), (t34, pg, ALL, "gate")):
+        bb = t.get_window_extent(renderer=rnd).transformed(ax.transData.inverted())
+        y_ = (bb.y0 + bb.y1) / 2
+        seg(ax, [(bb.x1 + 0.03, y_), (px_, y_), (px_, ny - 0.16)], c=c, lw=0.8)
+        ax.text(px_ - 0.03, ny - 0.30, lab, fontsize=SMALL, color=c, ha="right", va="center")  # beside its port
 
     # ======================================================================= (b) Sparse Defect Replay
     bx_, by_, bw_, bh_ = 4.48, 1.92, 2.65, 1.77
