@@ -216,9 +216,13 @@ def draw(out_dir):
     lx = cB + tb / 2 + 0.06
     ax.text(lx, sy + st, "stage-head targets", fontsize=SMALL, color=MUTED, va="top")
     # the stage-head logits z1-z4 enter the gated fusion (used at inference too)
-    fx0, fy0, hx_ = sxs[3] + 0.10, ny - 0.40, fb_x + fb_w / 2
-    seg(ax, [(fx0, fy0), (hx_, fy0), (hx_, ny - 0.16)], c=NETC, lw=0.8)
-    ax.text(fx0 + 0.04, fy0 + 0.02, "$z_1$\u2013$z_4$", fontsize=SMALL, color=NETC, va="bottom", ha="left")
+    # two explicit inputs of the fusion box: z1,z2 = evidence (left port), z3,z4 = gate (right port); z enters from the left
+    fx0, ye, yg = sxs[3] + 0.10, ny - 0.40, ny - 0.50
+    pe, pg = fb_x + fb_w * 0.28, fb_x + fb_w * 0.72
+    seg(ax, [(fx0, ye), (pe, ye), (pe, ny - 0.16)], c=NETC, lw=1.0)
+    seg(ax, [(fx0, yg), (pg, yg), (pg, ny - 0.16)], c=NETC, lw=1.0)
+    ax.text(xe + 0.03, ye + 0.01, "$z_1, z_2$", fontsize=SMALL, color=NETC, va="bottom", ha="left")
+    ax.text(xe + 0.03, yg - 0.01, "$z_3, z_4$ (gate)", fontsize=SMALL, color=NETC, va="top", ha="left")
     ax.text(lx, sy + 0.17, "$s_{1,2}$: small defects", fontsize=SMALL, color=SIZE, va="center")
     ax.text(lx, sy + 0.01, "$s_{3,4}$: all defects", fontsize=SMALL, color=ALL, va="bottom")
 
