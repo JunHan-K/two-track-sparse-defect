@@ -219,8 +219,6 @@ def draw(out_dir):
     fx0, fy0, hx_ = sxs[3] + 0.10, ny - 0.40, fb_x + fb_w / 2
     seg(ax, [(fx0, fy0), (hx_, fy0), (hx_, ny - 0.16)], c=NETC, lw=0.8)
     ax.text(fx0 + 0.04, fy0 + 0.02, "$z_1$\u2013$z_4$", fontsize=SMALL, color=NETC, va="bottom", ha="left")
-    ax.text(hx_ - 0.05, fy0 + 0.11, "$z_{1,2}$: evidence\n$z_{3,4}$: gate", fontsize=SMALL, color=NETC, va="center",
-            ha="right", linespacing=1.0)
     ax.text(lx, sy + 0.17, "$s_{1,2}$: small defects", fontsize=SMALL, color=SIZE, va="center")
     ax.text(lx, sy + 0.01, "$s_{3,4}$: all defects", fontsize=SMALL, color=ALL, va="bottom")
 
@@ -298,7 +296,7 @@ def draw(out_dir):
     gx0n = ix + iw + 0.36
     xe = net(ax, gx0n, ly, 0.5, NETC, label=False, stages=False)
     seg(ax, [(ix + iw, ly), (gx0n - 0.02, ly)], c=LOW)
-    ax.text((gx0n + xe) / 2, iy - 0.05, "Global Sight (L)\nsame MiT-B0", fontsize=LAB, color=LOW, ha="center", va="top",
+    ax.text((gx0n + xe) / 2, iy - 0.05, "Global Sight (L)", fontsize=LAB, color=LOW, ha="center", va="top",
             linespacing=1.0)
     # every prediction is drawn as in Fig. 2: probability map (inferno), ground truth in green
     px, pw = xe + 0.25, iw
@@ -352,7 +350,7 @@ def draw(out_dir):
         ax.plot([bx1, zx0], [yb_, yz_], color=NAT, lw=0.7, zorder=8)
     xe2 = net(ax, zx0 + zs + 0.24, zy0 + zs / 2, 0.5, NETC, label=False, stages=False)  # same network icon/colour
     seg(ax, [(zx0 + zs, zy0 + zs / 2), (zx0 + zs + 0.22, zy0 + zs / 2)], c=NAT)
-    ax.text((zx0 + zs + 0.24 + xe2) / 2, iy - 0.05, "Native Sight (S)\nsame MiT-B0", fontsize=LAB, color=NAT, ha="center",
+    ax.text((zx0 + zs + 0.24 + xe2) / 2, iy - 0.05, "Native Sight (S)", fontsize=LAB, color=NAT, ha="center",
             va="top", linespacing=1.0)
     # the merge (Eq. 3) on the same window: global p_L (top, from the global prediction) and native p_S (bottom)
     cz = (zs - 0.04) / 2
@@ -373,8 +371,6 @@ def draw(out_dir):
     mx, my_, mr = ox + cz + 0.36, ctr, 0.125
     ring(ax, mx, my_, mr, c=INK, lw=0.8)
     ax.text(mx, my_, "max", ha="center", va="center", fontsize=SMALL, color=INK)
-    ax.text(mx, my_ - mr - 0.03, "pixel-wise (4);\n$p_S$: $\\times1$ in $M$,\n$\\times0.5$ outside", ha="center", va="top",
-            fontsize=SMALL, color=MUTED, linespacing=1.0)
     seg(ax, [(ox + cz, yt + cz / 2), (mx - mr * 0.75, my_ + mr * 0.66)], c=LOW)
     seg(ax, [(ox + cz, yb + cz / 2), (mx - mr * 0.75, my_ - mr * 0.66)], c=NAT)
     fx_ = mx + mr + 0.24
